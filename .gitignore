@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+
+# Database
+*.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test artifacts
+*.fit
+*.pdf

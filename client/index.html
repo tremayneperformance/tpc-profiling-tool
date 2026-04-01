@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0e0f12">
+    <meta name="description" content="DFA A1 Ramp Test - Tremayne Performance Coaching">
+    <title>DFA A1 Ramp Test | TPC</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-brand">
+            <h1 class="header-title">TREMAYNE PERFORMANCE</h1>
+            <span class="header-subtitle">DFA A1 RAMP TEST</span>
+        </div>
+        <div class="header-status">
+            <span id="ble-status" class="status-chip disconnected">NO DEVICES</span>
+            <button id="btn-logout" class="btn-logout" style="display:none">LOGOUT</button>
+        </div>
+    </header>
+
+    <!-- Login Screen -->
+    <main id="login-screen" class="screen active">
+        <section class="card" style="max-width:420px;margin:2rem auto;">
+            <h2 class="card-title">ATHLETE LOGIN</h2>
+            <p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:1.5rem;">
+                Enter your email to receive an access PIN.
+            </p>
+
+            <div id="login-step-email">
+                <div class="form-group full-width">
+                    <label for="login-email">Email Address</label>
+                    <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
+                </div>
+                <button class="btn-start" id="btn-request-pin" style="margin-top:1rem;width:100%;">
+                    <span class="btn-start-text">SEND PIN</span>
+                    <span class="btn-start-sub">We'll email you a 6-digit code</span>
+                </button>
+            </div>
+
+            <div id="login-step-pin" style="display:none;">
+                <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem;">
+                    PIN sent to <strong id="login-email-display"></strong>
+                </p>
+                <div class="form-group full-width">
+                    <label for="login-pin">Access PIN</label>
+                    <input type="text" id="login-pin" placeholder="123456" maxlength="6"
+                           inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code"
+                           style="font-size:1.5rem;text-align:center;letter-spacing:0.5em;">
+                </div>
+                <button class="btn-start" id="btn-verify-pin" style="margin-top:1rem;width:100%;">
+                    <span class="btn-start-text">VERIFY PIN</span>
+                </button>
+                <button class="btn-new-test" id="btn-back-email" style="margin-top:0.5rem;width:100%;font-size:0.8rem;">
+                    Use different email
+                </button>
+            </div>
+
+            <p id="login-error" style="color:#ef4444;font-size:0.85rem;margin-top:1rem;display:none;"></p>
+
+            <div style="border-top:1px solid var(--border);margin-top:2rem;padding-top:1.5rem;">
+                <p style="color:var(--text-dim);font-size:0.75rem;text-align:center;margin-bottom:0.75rem;">COACH / DEV ACCESS</p>
+                <div class="form-group full-width">
+                    <label for="dev-password">Password</label>
+                    <input type="password" id="dev-password" placeholder="Enter password">
+                </div>
+                <button class="btn-new-test" id="btn-dev-login" style="margin-top:0.5rem;width:100%;font-size:0.8rem;">
+                    LOGIN WITH PASSWORD
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Setup Screen -->
+    <main id="setup-screen" class="screen">
+        <!-- Sport Selection -->
+        <section class="card sport-select-card">
+            <h2 class="card-title">SELECT SPORT</h2>
+            <div class="sport-toggle">
+                <button id="btn-bike" class="sport-btn active" data-sport="bike">
+                    <svg class="sport-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="5" cy="18" r="3.5"/><circle cx="19" cy="18" r="3.5"/>
+                        <path d="M12 18l-3-8h8l-2 8M9 10l3-4 4 2"/>
+                    </svg>
+                    <span>BIKE</span>
+                </button>
+                <button id="btn-run" class="sport-btn" data-sport="run">
+                    <svg class="sport-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="14" cy="4" r="2"/><path d="M10 9l4-1 2 3m-6-2l-4 8m4-8l2 8m4-6l3 6"/>
+                    </svg>
+                    <span>RUN</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Athlete Info -->
+        <section class="card athlete-card">
+            <h2 class="card-title">ATHLETE DETAILS</h2>
+            <div class="form-grid">
+                <div class="form-group full-width">
+                    <label for="athlete-name">Athlete Name</label>
+                    <input type="text" id="athlete-name" placeholder="Enter name" readonly>
+                </div>
+                <div class="form-group" id="group-threshold-power">
+                    <label for="threshold-power">Threshold Power (W)</label>
+                    <input type="number" id="threshold-power" placeholder="e.g. 250" min="50" max="600">
+                </div>
+                <div class="form-group" id="group-threshold-pace" style="display:none">
+                    <label for="threshold-pace">Threshold Pace (min/km)</label>
+                    <input type="text" id="threshold-pace" placeholder="e.g. 4:30">
+                </div>
+                <div class="form-group">
+                    <label for="hrmax">HR Max (bpm)</label>
+                    <input type="number" id="hrmax" placeholder="e.g. 185" min="120" max="230">
+                </div>
+                <div class="form-group" id="group-weight">
+                    <label for="weight">Weight (kg)</label>
+                    <input type="number" id="weight" placeholder="e.g. 75" min="30" max="200" step="0.1">
+                </div>
+            </div>
+        </section>
+
+        <!-- Device Connections (Bike) -->
+        <section class="card devices-card" id="bike-devices">
+            <h2 class="card-title">CONNECT DEVICES</h2>
+            <div class="device-grid">
+                <div class="device-slot" id="slot-trainer">
+                    <div class="device-icon-wrap bike-accent">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="device-icon">
+                            <rect x="2" y="6" width="20" height="12" rx="2"/>
+                            <path d="M6 10h12M6 14h8"/>
+                        </svg>
+                    </div>
+                    <div class="device-info">
+                        <span class="device-label">Smart Trainer</span>
+                        <span class="device-name" id="trainer-name">Not connected</span>
+                    </div>
+                    <button class="btn-connect bike-accent" id="btn-connect-trainer">CONNECT</button>
+                </div>
+                <div class="device-slot" id="slot-hrm-bike">
+                    <div class="device-icon-wrap bike-accent">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="device-icon">
+                            <path d="M12 21C12 21 4 14 4 9.5C4 5.36 7.36 3 10 3c1.66 0 2 1 2 1s.34-1 2-1c2.64 0 6 2.36 6 6.5C20 14 12 21 12 21z"/>
+                        </svg>
+                    </div>
+                    <div class="device-info">
+                        <span class="device-label">HR Monitor (HRV)</span>
+                        <span class="device-name" id="hrm-bike-name">Not connected</span>
+                    </div>
+                    <button class="btn-connect bike-accent" id="btn-connect-hrm-bike">CONNECT</button>
+                </div>
+            </div>
+            <p class="device-note">HR monitor must support RR interval broadcast for HRV data collection.</p>
+        </section>
+
+        <!-- Device Connections (Run) -->
+        <section class="card devices-card" id="run-devices" style="display:none">
+            <h2 class="card-title">CONNECT DEVICES</h2>
+            <div class="device-grid">
+                <div class="device-slot" id="slot-hrm-run">
+                    <div class="device-icon-wrap run-accent">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="device-icon">
+                            <path d="M12 21C12 21 4 14 4 9.5C4 5.36 7.36 3 10 3c1.66 0 2 1 2 1s.34-1 2-1c2.64 0 6 2.36 6 6.5C20 14 12 21 12 21z"/>
+                        </svg>
+                    </div>
+                    <div class="device-info">
+                        <span class="device-label">HR Monitor (HRV)</span>
+                        <span class="device-name" id="hrm-run-name">Not connected</span>
+                    </div>
+                    <button class="btn-connect run-accent" id="btn-connect-hrm-run">CONNECT</button>
+                </div>
+            </div>
+            <p class="device-note">HR monitor must support RR interval broadcast for HRV data collection.</p>
+        </section>
+
+        <!-- Protocol Preview -->
+        <section class="card protocol-card">
+            <h2 class="card-title">PROTOCOL PREVIEW</h2>
+            <div class="protocol-bar" id="protocol-bar"></div>
+            <div class="protocol-stages" id="protocol-stages"></div>
+        </section>
+
+        <!-- Start Button -->
+        <div class="start-section">
+            <button class="btn-start" id="btn-start" disabled>
+                <span class="btn-start-text">START TEST</span>
+                <span class="btn-start-sub" id="start-sub">Connect devices to begin</span>
+            </button>
+        </div>
+    </main>
+
+    <!-- Test Screen -->
+    <main id="test-screen" class="screen">
+        <!-- Top Metrics Bar -->
+        <div class="metrics-bar">
+            <div class="metric-cell elapsed">
+                <span class="metric-label">ELAPSED</span>
+                <span class="metric-value" id="metric-elapsed">00:00</span>
+            </div>
+            <div class="metric-cell stage">
+                <span class="metric-label">STAGE</span>
+                <span class="metric-value" id="metric-stage">WARMUP</span>
+            </div>
+            <div class="metric-cell remaining">
+                <span class="metric-label">STAGE TIME</span>
+                <span class="metric-value" id="metric-remaining">00:00</span>
+            </div>
+        </div>
+
+        <!-- Primary Metrics -->
+        <div class="primary-metrics">
+            <div class="big-metric power-metric" id="power-display">
+                <span class="big-value" id="metric-power">---</span>
+                <span class="big-unit">W</span>
+                <span class="big-label">POWER</span>
+                <div class="target-row" id="target-power-row">
+                    <span class="target-label">TARGET</span>
+                    <span class="target-value" id="metric-target-power">---</span>
+                    <span class="target-unit">W</span>
+                </div>
+            </div>
+            <div class="big-metric hr-metric">
+                <span class="big-value" id="metric-hr">---</span>
+                <span class="big-unit">bpm</span>
+                <span class="big-label">HEART RATE</span>
+            </div>
+        </div>
+
+        <!-- Secondary Metrics -->
+        <div class="secondary-metrics">
+            <div class="small-metric dfa-metric-cell" id="dfa-display">
+                <span class="small-label">DFA a1</span>
+                <span class="small-value dfa-value" id="metric-dfa">---</span>
+                <span class="small-unit" id="dfa-zone-label">waiting for data</span>
+            </div>
+            <div class="small-metric" id="cadence-display">
+                <span class="small-label">CADENCE</span>
+                <span class="small-value" id="metric-cadence">---</span>
+                <span class="small-unit">rpm</span>
+            </div>
+            <div class="small-metric">
+                <span class="small-label">RR INTERVALS</span>
+                <span class="small-value" id="metric-rr-count">0</span>
+                <span class="small-unit">collected</span>
+            </div>
+            <div class="small-metric">
+                <span class="small-label">ARTIFACT</span>
+                <span class="small-value" id="metric-artifact">0</span>
+                <span class="small-unit">%</span>
+            </div>
+            <div class="small-metric" id="pace-display" style="display:none">
+                <span class="small-label">TARGET PACE</span>
+                <span class="small-value" id="metric-target-pace">--:--</span>
+                <span class="small-unit">min/km</span>
+            </div>
+        </div>
+
+        <!-- Protocol Progress -->
+        <div class="progress-section">
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="progress-segments" id="progress-segments"></div>
+        </div>
+
+        <!-- Real-time Chart -->
+        <div class="chart-section">
+            <canvas id="live-chart"></canvas>
+        </div>
+
+        <!-- HRV Status -->
+        <div class="hrv-status-bar">
+            <div class="hrv-indicator">
+                <span class="hrv-dot" id="hrv-dot"></span>
+                <span class="hrv-text" id="hrv-status-text">Waiting for RR data...</span>
+            </div>
+            <div class="hrv-stats">
+                <span id="hrv-rmssd">RMSSD: ---</span>
+                <span id="hrv-sdnn">SDNN: ---</span>
+            </div>
+        </div>
+
+        <!-- TTE / Max Effort — Large "I'M DONE" button (hidden until TTE/max effort phase) -->
+        <div id="tte-done-section" class="tte-done-section" style="display:none;">
+            <button class="btn-tte-done" id="btn-tte-done">
+                I'M DONE
+            </button>
+            <p class="tte-done-hint">Tap when you can't hold the effort any longer</p>
+        </div>
+
+        <!-- Controls -->
+        <div class="test-controls">
+            <button class="btn-control btn-pause" id="btn-pause">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                    <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+                </svg>
+                PAUSE
+            </button>
+            <button class="btn-control btn-skip" id="btn-skip">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                    <path d="M5 4l10 8-10 8V4zM19 4v16"/>
+                </svg>
+                SKIP STAGE
+            </button>
+            <button class="btn-control btn-stop" id="btn-stop">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                    <rect x="4" y="4" width="16" height="16" rx="2"/>
+                </svg>
+                STOP
+            </button>
+        </div>
+    </main>
+
+    <!-- Results Screen -->
+    <main id="results-screen" class="screen">
+        <section class="card results-summary-card">
+            <h2 class="card-title">TEST COMPLETE</h2>
+            <div class="results-grid">
+                <div class="result-item">
+                    <span class="result-label">Duration</span>
+                    <span class="result-value" id="result-duration">--:--</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Stages Completed</span>
+                    <span class="result-value" id="result-stages">--</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Peak Power</span>
+                    <span class="result-value" id="result-peak-power">--- W</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Peak HR</span>
+                    <span class="result-value" id="result-peak-hr">--- bpm</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">RR Intervals</span>
+                    <span class="result-value" id="result-rr-total">---</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Artifact Rate</span>
+                    <span class="result-value" id="result-artifact">--- %</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2 class="card-title">DATA QUALITY</h2>
+            <div class="quality-bar" id="quality-bar"></div>
+            <p class="quality-note" id="quality-note"></p>
+        </section>
+
+        <section class="card" id="upload-status-card">
+            <h2 class="card-title">DATA UPLOAD</h2>
+            <div id="upload-status">
+                <p style="color:var(--text-dim);">Uploading test data to server...</p>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2 class="card-title">EXPORT DATA</h2>
+            <p class="export-note">Export the collected data for local backup.</p>
+            <div class="export-buttons">
+                <button class="btn-export" id="btn-export-fit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                    </svg>
+                    EXPORT .FIT
+                </button>
+                <button class="btn-export" id="btn-export-csv">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                    </svg>
+                    EXPORT .CSV
+                </button>
+                <button class="btn-export" id="btn-export-json">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                    </svg>
+                    EXPORT .JSON
+                </button>
+            </div>
+        </section>
+
+        <div class="start-section">
+            <button class="btn-new-test" id="btn-new-test">NEW TEST</button>
+        </div>
+    </main>
+
+    <!-- RR Data Pre-flight Confirmation Modal -->
+    <div id="rr-preflight-overlay" class="preflight-overlay">
+        <div class="preflight-modal">
+            <h2 class="card-title">CONFIRM RR DATA RECORDING</h2>
+            <p class="preflight-desc">Verify your HR monitor is streaming RR interval data before starting the test. This is essential for DFA Alpha1 analysis.</p>
+
+            <div class="preflight-live">
+                <div class="preflight-metric">
+                    <span class="preflight-metric-label">HEART RATE</span>
+                    <span class="preflight-metric-value" id="preflight-hr">---</span>
+                    <span class="preflight-metric-unit">bpm</span>
+                </div>
+                <div class="preflight-metric">
+                    <span class="preflight-metric-label">RR INTERVALS</span>
+                    <span class="preflight-metric-value" id="preflight-rr-count">0</span>
+                    <span class="preflight-metric-unit">received</span>
+                </div>
+                <div class="preflight-metric">
+                    <span class="preflight-metric-label">DFA a1</span>
+                    <span class="preflight-metric-value" id="preflight-dfa">---</span>
+                    <span class="preflight-metric-unit">alpha1</span>
+                </div>
+            </div>
+
+            <div class="preflight-rr-stream">
+                <span class="preflight-stream-label">LIVE RR STREAM</span>
+                <div class="preflight-rr-tickers" id="preflight-rr-tickers"></div>
+            </div>
+
+            <div class="preflight-status" id="preflight-status">
+                <span class="preflight-dot" id="preflight-dot"></span>
+                <span class="preflight-status-text" id="preflight-status-text">Waiting for RR data from HR monitor...</span>
+            </div>
+
+            <div class="preflight-actions">
+                <button class="btn-control btn-stop" id="btn-preflight-cancel">CANCEL</button>
+                <button class="btn-start preflight-confirm" id="btn-preflight-confirm" disabled>
+                    <span class="btn-start-text">CONFIRM & START TEST</span>
+                    <span class="btn-start-sub" id="preflight-confirm-sub">Waiting for RR data...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio for stage change cues -->
+    <audio id="audio-stage" preload="auto"></audio>
+    <audio id="audio-complete" preload="auto"></audio>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="js/ble.js"></script>
+    <script src="js/protocol.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

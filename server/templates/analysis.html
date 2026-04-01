@@ -1,0 +1,3201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tremayne Performance Athlete Profiling Tool</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <h1>Tremayne Performance</h1>
+    <p class="header-subtitle">Athlete Profiling Tool</p>
+  </header>
+
+  <!-- ATHLETE INFO -->
+  <section class="athlete-section">
+    <div class="athlete-section-header">
+      <h2>Athlete</h2>
+      <span class="athlete-section-tag">Required for saving</span>
+    </div>
+    <div class="athlete-inputs">
+      <div class="input-group" style="position:relative">
+        <label for="ramp-athlete-name">Name</label>
+        <input type="text" id="ramp-athlete-name" placeholder="e.g. Kyle Tremayne" autocomplete="off" />
+        <div id="athlete-dropdown" class="athlete-dropdown" hidden></div>
+      </div>
+      <div class="input-group">
+        <label for="ramp-hrmax-run">
+          Run HRmax (bpm)
+          <span class="input-tooltip" tabindex="0" title="Use a value from a true maximal running test. Estimated HRmax (220-age) may be off by 10-15 bpm.">?</span>
+        </label>
+        <input type="number" id="ramp-hrmax-run" min="100" max="250" placeholder="e.g. 188" />
+      </div>
+      <div class="input-group">
+        <label for="ramp-hrmax-bike">
+          Bike HRmax (bpm)
+          <span class="input-tooltip" tabindex="0" title="Cycling HRmax is typically 5-10 bpm lower than running. Use a value from a maximal cycling test.">?</span>
+        </label>
+        <input type="number" id="ramp-hrmax-bike" min="100" max="250" placeholder="e.g. 182" />
+      </div>
+      <div class="input-group">
+        <label for="ramp-weight-kg">Weight (kg)</label>
+        <input type="number" id="ramp-weight-kg" min="30" max="200" step="0.1" placeholder="e.g. 72" />
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- CYCLING SECTION                                                -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="upload-grid" style="display:block;">
+    <div class="upload-card" id="cycling-section-card">
+      <div class="sport-header sport-bike-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <h2>Bike</h2>
+        <div class="input-group" style="margin:0;min-width:200px;">
+          <select id="cycling-test-type" class="test-type-select">
+            <option value="dfa_ramp">DFA A1 Ramp Test</option>
+            <option value="power_profile">Power Profile</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- DFA Ramp inputs for Bike -->
+      <div id="bike-dfa-inputs">
+        <div id="ramp-drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Drop cycling FIT file here">
+          <p class="drop-label">Drop .FIT / .FIT.GZ file here</p>
+          <p class="drop-sub">or click to select</p>
+          <input type="file" id="ramp-file-input" accept=".fit,.fit.gz,.gz" hidden />
+        </div>
+        <div id="ramp-file-name" class="file-name" hidden></div>
+        <div id="ramp-status-bar" class="status-bar" hidden></div>
+      </div>
+
+      <!-- Power Profile inputs for Bike -->
+      <div id="bike-ftp-inputs" hidden>
+        <div class="toggle-group" style="margin-bottom:0.75rem;">
+          <span class="toggle-label">Input</span>
+          <div class="mode-toggle-bar">
+            <button class="mode-toggle-btn active" data-mode="manual" id="bike-ftp-btn-manual">Manual Entry</button>
+            <button class="mode-toggle-btn" data-mode="fit" id="bike-ftp-btn-fit">Upload .FIT File</button>
+          </div>
+        </div>
+
+        <!-- Bike FTP Manual -->
+        <div id="bike-ftp-manual-section">
+          <div class="ftp-manual-grid">
+            <div class="ftp-effort-card">
+              <div class="ftp-effort-header ftp-effort-short">5-Minute Effort</div>
+              <div class="ftp-effort-fields">
+                <div class="input-group"><label for="c5-power">Avg Power (W) *</label><input type="number" id="c5-power" placeholder="e.g. 340" min="0" step="1" /></div>
+                <div class="input-group"><label for="c5-hr">Avg HR (bpm)</label><input type="number" id="c5-hr" placeholder="e.g. 172" min="0" /></div>
+                <div class="input-group"><label for="c5-maxhr">Max HR (bpm)</label><input type="number" id="c5-maxhr" placeholder="e.g. 181" min="0" /></div>
+                <div class="input-group"><label for="c5-cadence">Avg Cadence (rpm)</label><input type="number" id="c5-cadence" placeholder="e.g. 95" min="0" /></div>
+              </div>
+            </div>
+            <div class="ftp-effort-card">
+              <div class="ftp-effort-header ftp-effort-long">20-Minute Effort</div>
+              <div class="ftp-effort-fields">
+                <div class="input-group"><label for="c20-power">Avg Power (W) *</label><input type="number" id="c20-power" placeholder="e.g. 290" min="0" step="1" /></div>
+                <div class="input-group"><label for="c20-hr">Avg HR (bpm)</label><input type="number" id="c20-hr" placeholder="e.g. 168" min="0" /></div>
+                <div class="input-group"><label for="c20-maxhr">Max HR (bpm)</label><input type="number" id="c20-maxhr" placeholder="e.g. 175" min="0" /></div>
+                <div class="input-group"><label for="c20-cadence">Avg Cadence (rpm)</label><input type="number" id="c20-cadence" placeholder="e.g. 88" min="0" /></div>
+              </div>
+            </div>
+          </div>
+          <button id="cycling-calc-btn" class="btn-primary ftp-calc-btn">Calculate Profile</button>
+        </div>
+
+        <!-- Bike FTP FIT Upload -->
+        <div id="bike-ftp-fit-section" hidden>
+          <div class="upload-card ftp-upload-card">
+            <div id="bike-ftp-drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Drop FIT file here">
+              <p class="drop-label">Drop .FIT / .FIT.GZ file here</p>
+              <p class="drop-sub">or click to select</p>
+              <input type="file" id="bike-ftp-file-input" accept=".fit,.fit.gz,.gz" hidden />
+            </div>
+            <div id="bike-ftp-file-name" class="file-name" hidden></div>
+            <button id="bike-ftp-analyze-btn" class="btn-primary" disabled>Detect Best Efforts</button>
+            <div id="bike-ftp-detect-status" class="status-bar" hidden></div>
+          </div>
+          <div id="bike-ftp-detected-results" class="ftp-detected-results" hidden>
+            <h3 class="section-title">Detected Efforts</h3>
+            <p class="ftp-detect-note">Review the auto-detected efforts below. Accept to proceed with profiling, or switch to Manual Entry to override.</p>
+            <div id="bike-ftp-detected-grid" class="ftp-detected-grid"></div>
+            <button id="bike-ftp-accept-btn" class="btn-primary ftp-accept-btn">Accept &amp; Calculate Profile</button>
+          </div>
+        </div>
+        <div id="bike-ftp-calc-status" class="status-bar" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bike DFA Ramp Analyze Button -->
+  <div id="bike-ramp-analyze-row" class="ramp-analyze-row">
+    <button id="ramp-bike-analyze-btn" class="btn-primary" disabled>Analyze Bike Ramp Test</button>
+  </div>
+
+  <!-- BIKE DFA RAMP RESULTS -->
+  <section id="bike-results-section" class="sport-section" hidden>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div class="sport-section-title sport-bike-title" id="bike-results-title" style="margin-bottom:0;flex:1">Bike Ramp Test Analysis</div>
+      <button class="btn-export-pdf" onclick="openExportModal('bike')">Export PDF</button>
+    </div>
+    <div class="meta-row" id="bike-meta-row"></div>
+    <div id="bike-warnings-bar" class="warnings-bar" hidden></div>
+    <h3 class="section-title">Thresholds</h3>
+    <div class="threshold-cards ramp-threshold-cards" id="bike-threshold-cards"></div>
+    <h3 class="section-title" id="bike-profile-section-title" hidden>Metabolic Profile</h3>
+    <div class="profile-cards-grid" id="bike-profile-grid" hidden>
+      <div class="profile-card" id="bike-classification-card">
+        <div class="profile-card-header"><span class="profile-card-title">Classification</span></div>
+        <div class="profile-card-body">
+          <div class="event-profile-label" id="bike-archetype-label"></div>
+          <div class="event-profile-desc" id="bike-archetype-confidence"></div>
+          <div id="bike-ceiling-flag" class="ramp-ceiling-flag" hidden>Ceiling-Limited</div>
+        </div>
+      </div>
+      <div class="profile-card" id="bike-dev-level-card" hidden>
+        <div class="profile-card-header"><span class="profile-card-title">Development Level</span></div>
+        <div class="profile-card-body">
+          <div class="ramp-dev-level-label" id="bike-dev-level-label"></div>
+          <div class="ramp-dev-level-note" id="bike-dev-level-note"></div>
+        </div>
+      </div>
+      <div class="profile-card" id="bike-3min-power-card" hidden>
+        <div class="profile-card-header"><span class="profile-card-title">3-Min Power</span></div>
+        <div class="profile-card-body">
+          <div class="card-value" id="bike-3min-power-value">&mdash;</div>
+          <div class="card-unit" id="bike-3min-power-detail"></div>
+        </div>
+      </div>
+    </div>
+    <div class="sw-cards-grid" id="bike-sw-grid" hidden>
+      <div class="profile-card sw-card sw-strengths">
+        <div class="profile-card-header sw-header-strengths"><span class="profile-card-title">Strengths</span></div>
+        <div class="profile-card-body"><div id="bike-strengths-list" class="sw-list"></div></div>
+      </div>
+      <div class="profile-card sw-card sw-weaknesses">
+        <div class="profile-card-header sw-header-weaknesses"><span class="profile-card-title">Weaknesses</span></div>
+        <div class="profile-card-body"><div id="bike-weaknesses-list" class="sw-list"></div></div>
+      </div>
+    </div>
+    <div class="profile-card profile-card-wide training-rec-card" id="bike-training-rec-card" hidden>
+      <div class="profile-card-header training-rec-header"><span class="profile-card-title">Training Recommendations</span></div>
+      <div class="profile-card-body"><ul id="bike-training-rec-list" class="training-rec-list"></ul></div>
+    </div>
+    <div class="profile-card profile-card-wide profile-card-warn" id="bike-profile-warnings-card" hidden>
+      <div class="profile-card-body"><div id="bike-profile-warnings" class="ramp-profile-warnings"></div></div>
+    </div>
+    <details class="charts-details" open>
+      <summary class="charts-summary">Charts</summary>
+      <p class="chart-desc">Per-stage means from final 60s of each 3-min step. Error bars = SD.</p>
+      <h3 class="section-title" id="bike-chart-power-title">DFA &alpha;1 vs Power</h3>
+      <div class="chart-container"><canvas id="bike-chart-a1-power"></canvas></div>
+      <h3 class="section-title">DFA &alpha;1 vs Heart Rate</h3>
+      <div class="chart-container"><canvas id="bike-chart-a1-hr"></canvas></div>
+      <h3 class="section-title">Session Overview</h3>
+      <div class="chart-container chart-container-wide"><canvas id="bike-chart-session"></canvas></div>
+    </details>
+    <details class="charts-details">
+      <summary class="charts-summary">Advanced Metrics</summary>
+      <h3 class="section-title">Detected Segments</h3>
+      <div class="ramp-segment-bar" id="bike-segment-bar"></div>
+      <div id="bike-segment-info" class="ramp-segment-info"></div>
+      <button id="bike-toggle-adjust" class="btn-secondary" style="margin-top:0.5rem">Adjust Boundaries</button>
+      <div id="bike-manual-adjust" class="ramp-manual-adjust" hidden>
+        <h4 style="margin:0.5rem 0;color:var(--text-secondary,#9ca3af)">Manual Segment Boundaries (mm:ss)</h4>
+        <div class="ramp-adjust-grid" id="bike-adjust-grid"></div>
+        <button id="bike-reanalyze-btn" class="btn-primary" style="margin-top:0.75rem">Re-Analyze with Adjustments</button>
+      </div>
+      <div id="bike-archetype-metrics" style="margin-top:1rem"></div>
+    </details>
+    <!-- Threshold Interval Prescription -->
+    <div id="bike-ramp-prescription" class="prescription-section" hidden>
+      <h3 class="section-title prescription-title">Threshold Interval Prescription</h3>
+      <div class="prescription-grid" id="bike-ramp-prescription-grid"></div>
+      <div class="prescription-notes" id="bike-ramp-prescription-notes"></div>
+    </div>
+  </section>
+
+  <!-- BIKE FTP PROFILE RESULTS -->
+  <section id="bike-ftp-results-section" class="profile-section ftp-results" hidden>
+    <h2 class="profile-title" id="bike-ftp-results-title">Cycling Profile Results</h2>
+    <div class="ftp-profile-row">
+      <div class="ftp-ratio-display">
+        <span class="ftp-ratio-label">Ratio</span>
+        <span class="ftp-ratio-value" id="bike-ftp-ratio-value">--</span>
+      </div>
+      <div class="ftp-profile-badge" id="bike-ftp-profile-badge">--</div>
+    </div>
+    <div class="ftp-metrics-grid" id="bike-ftp-metrics-grid"></div>
+    <h3 class="section-title">Effort Data</h3>
+    <div class="ftp-effort-comparison" id="bike-ftp-effort-comparison"></div>
+    <div id="bike-ftp-hr-section" class="limiter-section" hidden>
+      <div class="limiter-header"><div class="limiter-label-row"><span class="limiter-title-text">Heart Rate Analysis</span></div></div>
+      <div class="ftp-hr-insights" id="bike-ftp-hr-insights"></div>
+    </div>
+    <div id="bike-ftp-flags-section" class="flags-section" hidden></div>
+    <div id="bike-ftp-chart-section" hidden>
+      <details class="charts-details" open>
+        <summary class="charts-summary">Activity Timeline</summary>
+        <p class="chart-desc">Full activity data with 30s rolling average. Shaded regions show detected efforts.</p>
+        <h3 class="section-title" id="bike-ftp-timeline-title">Power Over Time</h3>
+        <div class="chart-container ftp-chart-container ftp-timeline-chart"><canvas id="bike-ftp-timeline-chart"></canvas></div>
+        <div id="bike-ftp-hr-chart-section" hidden>
+          <h3 class="section-title">Heart Rate Over Time</h3>
+          <div class="chart-container ftp-chart-container ftp-timeline-chart"><canvas id="bike-ftp-hr-timeline-chart"></canvas></div>
+        </div>
+      </details>
+    </div>
+    <div class="save-row ftp-save-row">
+      <button id="bike-ftp-save-btn" class="btn-save">Save Test</button>
+      <span id="bike-ftp-save-confirm" class="save-confirm" hidden></span>
+    </div>
+    <!-- Threshold Interval Prescription -->
+    <div id="bike-ftp-prescription" class="prescription-section" hidden>
+      <h3 class="section-title prescription-title">Threshold Interval Prescription</h3>
+      <div class="prescription-grid" id="bike-ftp-prescription-grid"></div>
+      <div class="prescription-notes" id="bike-ftp-prescription-notes"></div>
+    </div>
+    <div class="prescription-disclaimer">
+      Profile classifications are coaching tools based on field test data, not clinical diagnoses.
+      Cross-reference with DFA alpha1 thresholds and training response for full context.
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- RUNNING SECTION                                                -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section class="upload-grid" style="display:block;">
+    <div class="upload-card" id="running-section-card">
+      <div class="sport-header sport-run-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <h2>Run</h2>
+        <div class="input-group" style="margin:0;min-width:200px;">
+          <select id="running-test-type" class="test-type-select">
+            <option value="dfa_ramp">DFA A1 Ramp Test</option>
+            <option value="velocity_profile">Velocity Profile</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- DFA Ramp inputs for Run -->
+      <div id="run-dfa-inputs">
+        <div class="run-protocol-input run-protocol-row">
+          <div class="input-group">
+            <label for="run-threshold-pace">
+              Threshold Pace (min:sec /km)
+              <span class="input-tooltip" tabindex="0" title="Enter your estimated threshold running pace. Used to calculate target pace for each ramp step.">?</span>
+            </label>
+            <input type="text" id="run-threshold-pace" placeholder="e.g. 5:00" autocomplete="off" />
+          </div>
+          <div class="input-group">
+            <label for="run-tte-duration">
+              TTE Duration (seconds)
+              <span class="input-tooltip" tabindex="0" title="Optional. Enter TTE duration in seconds if known. Leave blank for automatic HR-based detection.">?</span>
+            </label>
+            <input type="number" id="run-tte-duration" min="30" max="360" placeholder="Auto-detect" autocomplete="off" />
+          </div>
+          <div class="input-group input-group-checkbox">
+            <label><input type="checkbox" id="run-skip-tte" /> Skip TTE</label>
+          </div>
+        </div>
+        <div id="run-drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Drop running FIT file here">
+          <p class="drop-label">Drop .FIT / .FIT.GZ file here</p>
+          <p class="drop-sub">or click to select</p>
+          <input type="file" id="run-file-input" accept=".fit,.fit.gz,.gz" hidden />
+        </div>
+        <div id="run-file-name" class="file-name" hidden></div>
+        <div id="run-status-bar" class="status-bar" hidden></div>
+      </div>
+
+      <!-- Velocity Profile inputs for Run -->
+      <div id="run-ftp-inputs" hidden>
+        <div class="toggle-group" style="margin-bottom:0.75rem;">
+          <span class="toggle-label">Input</span>
+          <div class="mode-toggle-bar">
+            <button class="mode-toggle-btn active" data-mode="manual" id="run-ftp-btn-manual">Manual Entry</button>
+            <button class="mode-toggle-btn" data-mode="fit" id="run-ftp-btn-fit">Upload .FIT File</button>
+          </div>
+        </div>
+
+        <!-- Run FTP Manual -->
+        <div id="run-ftp-manual-section">
+          <div class="ftp-manual-grid">
+            <div class="ftp-effort-card">
+              <div class="ftp-effort-header ftp-effort-short">1000m Effort</div>
+              <div class="ftp-effort-fields">
+                <div class="input-group"><label for="r1k-time">Time (mm:ss) *</label><input type="text" id="r1k-time" placeholder="e.g. 3:25" /></div>
+                <div class="input-group"><label for="r1k-hr">Avg HR (bpm)</label><input type="number" id="r1k-hr" placeholder="e.g. 178" min="0" /></div>
+                <div class="input-group"><label for="r1k-maxhr">Max HR (bpm)</label><input type="number" id="r1k-maxhr" placeholder="e.g. 186" min="0" /></div>
+              </div>
+            </div>
+            <div class="ftp-effort-card">
+              <div class="ftp-effort-header ftp-effort-long">3000m Effort</div>
+              <div class="ftp-effort-fields">
+                <div class="input-group"><label for="r3k-time">Time (mm:ss) *</label><input type="text" id="r3k-time" placeholder="e.g. 11:30" /></div>
+                <div class="input-group"><label for="r3k-hr">Avg HR (bpm)</label><input type="number" id="r3k-hr" placeholder="e.g. 174" min="0" /></div>
+                <div class="input-group"><label for="r3k-maxhr">Max HR (bpm)</label><input type="number" id="r3k-maxhr" placeholder="e.g. 184" min="0" /></div>
+              </div>
+            </div>
+          </div>
+          <button id="running-calc-btn" class="btn-primary ftp-calc-btn">Calculate Profile</button>
+        </div>
+
+        <!-- Run FTP FIT Upload -->
+        <div id="run-ftp-fit-section" hidden>
+          <div class="upload-card ftp-upload-card">
+            <div id="run-ftp-drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Drop FIT file here">
+              <p class="drop-label">Drop .FIT / .FIT.GZ file here</p>
+              <p class="drop-sub">or click to select</p>
+              <input type="file" id="run-ftp-file-input" accept=".fit,.fit.gz,.gz" hidden />
+            </div>
+            <div id="run-ftp-file-name" class="file-name" hidden></div>
+            <button id="run-ftp-analyze-btn" class="btn-primary" disabled>Detect Best Efforts</button>
+            <div id="run-ftp-detect-status" class="status-bar" hidden></div>
+          </div>
+          <div id="run-ftp-detected-results" class="ftp-detected-results" hidden>
+            <h3 class="section-title">Detected Efforts</h3>
+            <p class="ftp-detect-note">Review the auto-detected efforts below. Accept to proceed with profiling, or switch to Manual Entry to override.</p>
+            <div id="run-ftp-detected-grid" class="ftp-detected-grid"></div>
+            <button id="run-ftp-accept-btn" class="btn-primary ftp-accept-btn">Accept &amp; Calculate Profile</button>
+          </div>
+        </div>
+        <div id="run-ftp-calc-status" class="status-bar" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Run DFA Ramp Analyze Button -->
+  <div id="run-ramp-analyze-row" class="ramp-analyze-row">
+    <button id="ramp-run-analyze-btn" class="btn-primary" disabled>Analyze Run Ramp Test</button>
+  </div>
+
+  <!-- RUN DFA RAMP RESULTS -->
+  <section id="run-results-section" class="sport-section" hidden>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div class="sport-section-title sport-run-title" id="run-results-title" style="margin-bottom:0;flex:1">Run Ramp Test Analysis</div>
+      <button class="btn-export-pdf" onclick="openExportModal('run')">Export PDF</button>
+    </div>
+    <div class="meta-row" id="run-meta-row"></div>
+    <div id="run-warnings-bar" class="warnings-bar" hidden></div>
+    <h3 class="section-title">Thresholds</h3>
+    <div class="threshold-cards ramp-threshold-cards" id="run-threshold-cards"></div>
+    <h3 class="section-title" id="run-profile-section-title" hidden>Metabolic Profile</h3>
+    <div class="profile-cards-grid" id="run-profile-grid" hidden>
+      <div class="profile-card" id="run-classification-card">
+        <div class="profile-card-header"><span class="profile-card-title">Classification</span></div>
+        <div class="profile-card-body">
+          <div class="event-profile-label" id="run-archetype-label"></div>
+          <div class="event-profile-desc" id="run-archetype-confidence"></div>
+          <div id="run-ceiling-flag" class="ramp-ceiling-flag" hidden>Ceiling-Limited</div>
+        </div>
+      </div>
+      <div class="profile-card" id="run-dev-level-card" hidden>
+        <div class="profile-card-header"><span class="profile-card-title">Development Level</span></div>
+        <div class="profile-card-body">
+          <div class="ramp-dev-level-label" id="run-dev-level-label"></div>
+          <div class="ramp-dev-level-note" id="run-dev-level-note"></div>
+        </div>
+      </div>
+      <div class="profile-card" id="run-3min-power-card" hidden>
+        <div class="profile-card-header"><span class="profile-card-title">3-Min Max Speed</span></div>
+        <div class="profile-card-body">
+          <div class="card-value" id="run-3min-power-value">&mdash;</div>
+          <div class="card-unit" id="run-3min-power-detail"></div>
+        </div>
+      </div>
+    </div>
+    <div class="sw-cards-grid" id="run-sw-grid" hidden>
+      <div class="profile-card sw-card sw-strengths">
+        <div class="profile-card-header sw-header-strengths"><span class="profile-card-title">Strengths</span></div>
+        <div class="profile-card-body"><div id="run-strengths-list" class="sw-list"></div></div>
+      </div>
+      <div class="profile-card sw-card sw-weaknesses">
+        <div class="profile-card-header sw-header-weaknesses"><span class="profile-card-title">Weaknesses</span></div>
+        <div class="profile-card-body"><div id="run-weaknesses-list" class="sw-list"></div></div>
+      </div>
+    </div>
+    <div class="profile-card profile-card-wide training-rec-card" id="run-training-rec-card" hidden>
+      <div class="profile-card-header training-rec-header"><span class="profile-card-title">Training Recommendations</span></div>
+      <div class="profile-card-body"><ul id="run-training-rec-list" class="training-rec-list"></ul></div>
+    </div>
+    <div class="profile-card profile-card-wide profile-card-warn" id="run-profile-warnings-card" hidden>
+      <div class="profile-card-body"><div id="run-profile-warnings" class="ramp-profile-warnings"></div></div>
+    </div>
+    <details class="charts-details" open>
+      <summary class="charts-summary">Charts</summary>
+      <p class="chart-desc">Per-stage means from final 60s of each 3-min step. Error bars = SD.</p>
+      <h3 class="section-title" id="run-chart-power-title">DFA &alpha;1 vs Pace</h3>
+      <div class="chart-container"><canvas id="run-chart-a1-power"></canvas></div>
+      <h3 class="section-title">DFA &alpha;1 vs Heart Rate</h3>
+      <div class="chart-container"><canvas id="run-chart-a1-hr"></canvas></div>
+      <h3 class="section-title">Session Overview</h3>
+      <div class="chart-container chart-container-wide"><canvas id="run-chart-session"></canvas></div>
+    </details>
+    <details class="charts-details">
+      <summary class="charts-summary">Advanced Metrics</summary>
+      <h3 class="section-title">Detected Segments</h3>
+      <div class="ramp-segment-bar" id="run-segment-bar"></div>
+      <div id="run-segment-info" class="ramp-segment-info"></div>
+      <button id="run-toggle-adjust" class="btn-secondary" style="margin-top:0.5rem">Adjust Boundaries</button>
+      <div id="run-manual-adjust" class="ramp-manual-adjust" hidden>
+        <h4 style="margin:0.5rem 0;color:var(--text-secondary,#9ca3af)">Manual Segment Boundaries (mm:ss)</h4>
+        <div class="ramp-adjust-grid" id="run-adjust-grid"></div>
+        <button id="run-reanalyze-btn" class="btn-primary" style="margin-top:0.75rem">Re-Analyze with Adjustments</button>
+      </div>
+      <div id="run-archetype-metrics" style="margin-top:1rem"></div>
+    </details>
+    <!-- Threshold Interval Prescription -->
+    <div id="run-ramp-prescription" class="prescription-section" hidden>
+      <h3 class="section-title prescription-title">Threshold Interval Prescription</h3>
+      <div class="prescription-grid" id="run-ramp-prescription-grid"></div>
+      <div class="prescription-notes" id="run-ramp-prescription-notes"></div>
+    </div>
+  </section>
+
+  <!-- RUN FTP PROFILE RESULTS -->
+  <section id="run-ftp-results-section" class="profile-section ftp-results" hidden>
+    <h2 class="profile-title" id="run-ftp-results-title">Running Profile Results</h2>
+    <div class="ftp-profile-row">
+      <div class="ftp-ratio-display">
+        <span class="ftp-ratio-label">Ratio</span>
+        <span class="ftp-ratio-value" id="run-ftp-ratio-value">--</span>
+      </div>
+      <div class="ftp-profile-badge" id="run-ftp-profile-badge">--</div>
+    </div>
+    <div class="ftp-metrics-grid" id="run-ftp-metrics-grid"></div>
+    <h3 class="section-title">Effort Data</h3>
+    <div class="ftp-effort-comparison" id="run-ftp-effort-comparison"></div>
+    <div id="run-ftp-hr-section" class="limiter-section" hidden>
+      <div class="limiter-header"><div class="limiter-label-row"><span class="limiter-title-text">Heart Rate Analysis</span></div></div>
+      <div class="ftp-hr-insights" id="run-ftp-hr-insights"></div>
+    </div>
+    <div id="run-ftp-flags-section" class="flags-section" hidden></div>
+    <div id="run-ftp-chart-section" hidden>
+      <details class="charts-details" open>
+        <summary class="charts-summary">Activity Timeline</summary>
+        <p class="chart-desc">Full activity data with 30s rolling average. Shaded regions show detected efforts.</p>
+        <h3 class="section-title" id="run-ftp-timeline-title">Speed Over Time</h3>
+        <div class="chart-container ftp-chart-container ftp-timeline-chart"><canvas id="run-ftp-timeline-chart"></canvas></div>
+        <div id="run-ftp-hr-chart-section" hidden>
+          <h3 class="section-title">Heart Rate Over Time</h3>
+          <div class="chart-container ftp-chart-container ftp-timeline-chart"><canvas id="run-ftp-hr-timeline-chart"></canvas></div>
+        </div>
+      </details>
+    </div>
+    <div class="save-row ftp-save-row">
+      <button id="run-ftp-save-btn" class="btn-save">Save Test</button>
+      <span id="run-ftp-save-confirm" class="save-confirm" hidden></span>
+    </div>
+    <!-- Threshold Interval Prescription -->
+    <div id="run-ftp-prescription" class="prescription-section" hidden>
+      <h3 class="section-title prescription-title">Threshold Interval Prescription</h3>
+      <div class="prescription-grid" id="run-ftp-prescription-grid"></div>
+      <div class="prescription-notes" id="run-ftp-prescription-notes"></div>
+    </div>
+    <div class="prescription-disclaimer">
+      Profile classifications are coaching tools based on field test data, not clinical diagnoses.
+      Cross-reference with DFA alpha1 thresholds and training response for full context.
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- COMBINED REPORT SECTION                                        -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section id="combined-report-section" class="sport-section" hidden>
+    <div class="sport-section-title" style="border-left-color:#8b5cf6;">Combined Report</div>
+    <h3 class="section-title">Threshold Comparison</h3>
+    <div id="combined-threshold-table"></div>
+    <h3 class="section-title" id="combined-hr-title" hidden>Cross-Sport HR Zone Comparison</h3>
+    <div id="combined-hr-table" hidden></div>
+  </section>
+
+  <!-- COMBINED SAVE + HISTORY -->
+  <div id="combined-save-section" hidden>
+    <div class="save-row">
+      <button id="ramp-save-btn" class="btn-save">Save Test</button>
+      <span id="ramp-save-confirm" class="save-confirm" hidden></span>
+    </div>
+    <details id="ramp-history-panel" class="history-panel" hidden>
+      <summary class="history-summary">Test History</summary>
+      <table class="history-table" id="ramp-history-table">
+        <thead><tr>
+          <th>Date</th><th>Sport</th><th>HRVT2/FTP</th><th>HRVT1c</th><th>Archetype</th><th>R&sup2;</th><th>Quality</th><th></th>
+        </tr></thead>
+        <tbody id="ramp-history-tbody"></tbody>
+      </table>
+      <div id="ramp-history-empty" class="history-empty" hidden>No previous ramp tests found.</div>
+      <div class="history-trend-chart"><canvas id="ramp-trend-chart"></canvas></div>
+    </details>
+  </div>
+
+  <!-- FTP HISTORY PANEL -->
+  <details id="ftp-history-panel" class="history-panel" hidden>
+    <summary class="history-summary">Power &amp; Velocity Test History</summary>
+    <div id="ftp-history-content">
+      <div id="ftp-history-empty" class="history-empty">No previous tests found.</div>
+      <div class="history-table-wrap">
+        <table id="ftp-history-table" class="history-table" hidden>
+          <thead id="ftp-history-thead"></thead>
+          <tbody id="ftp-history-tbody"></tbody>
+        </table>
+      </div>
+      <div id="ftp-trend-section" hidden>
+        <h3 class="section-title">Profile Trend</h3>
+        <div class="chart-container history-trend-chart"><canvas id="ftp-trend-chart"></canvas></div>
+      </div>
+    </div>
+  </details>
+
+</div><!-- .container -->
+
+<!-- PDF EXPORT MODAL -->
+<div id="export-modal" class="modal-overlay" hidden>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">Export Performance Report</h3>
+      <button class="modal-close" onclick="closeExportModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="input-group" style="width:100%">
+        <label for="export-comments">Coach Comments</label>
+        <textarea id="export-comments" rows="5" placeholder="Add personalised notes for the athlete..." style="width:100%;resize:vertical;font-family:'Inter',sans-serif;font-size:0.85rem;padding:0.5rem 0.75rem;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#e5e7eb;background:rgba(14,15,18,0.7)"></textarea>
+      </div>
+      <div style="margin-top:0.8rem">
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.82rem;color:#9ca3af;cursor:pointer">
+          <input type="checkbox" id="export-include-comparison" checked />
+          Include comparison to previous test (if available)
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeExportModal()">Cancel</button>
+      <button class="btn-primary" id="export-generate-btn" onclick="generateReport()">Generate Report</button>
+    </div>
+  </div>
+</div>
+
+<!-- ALL TESTS BOTTOM TAB -->
+<div id="all-tests-bar" class="all-tests-bar">
+  <button id="all-tests-toggle" class="all-tests-toggle" onclick="toggleAllTestsPanel()">
+    All Tests <span id="all-tests-arrow">&#9650;</span>
+  </button>
+  <div id="all-tests-panel" class="all-tests-panel" hidden>
+    <div class="all-tests-toolbar">
+      <div class="all-tests-filter">
+        <label for="all-tests-athlete-filter">Athlete</label>
+        <select id="all-tests-athlete-filter" onchange="filterAllTests()">
+          <option value="">All Athletes</option>
+        </select>
+      </div>
+      <div class="all-tests-filter">
+        <label for="all-tests-sport-filter">Sport</label>
+        <select id="all-tests-sport-filter" onchange="filterAllTests()">
+          <option value="">All</option>
+          <option value="bike">Bike</option>
+          <option value="run">Run</option>
+        </select>
+      </div>
+      <span id="all-tests-count" class="all-tests-count"></span>
+    </div>
+    <div class="all-tests-table-wrap">
+      <table class="history-table all-tests-table">
+        <thead><tr>
+          <th class="sortable" onclick="sortAllTests('athlete')">Athlete <span id="sort-athlete"></span></th>
+          <th class="sortable" onclick="sortAllTests('test_date')">Date <span id="sort-test_date"></span></th>
+          <th class="sortable" onclick="sortAllTests('protocol_type')">Sport <span id="sort-protocol_type"></span></th>
+          <th class="sortable" onclick="sortAllTests('hrvt1c_power')">HRVT1c <span id="sort-hrvt1c_power"></span></th>
+          <th class="sortable" onclick="sortAllTests('hrvt2_power')">HRVT2/FTP <span id="sort-hrvt2_power"></span></th>
+          <th class="sortable" onclick="sortAllTests('archetype')">Archetype <span id="sort-archetype"></span></th>
+          <th class="sortable" onclick="sortAllTests('atpr')">ATPR <span id="sort-atpr"></span></th>
+          <th class="sortable" onclick="sortAllTests('regression_r2_power')">R&sup2; <span id="sort-regression_r2_power"></span></th>
+          <th class="sortable" onclick="sortAllTests('data_quality')">Quality <span id="sort-data_quality"></span></th>
+        </tr></thead>
+        <tbody id="all-tests-tbody"></tbody>
+      </table>
+      <div id="all-tests-empty" class="history-empty" hidden>No test data saved yet.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+let rampFile = null;     // bike DFA file
+let runFile = null;      // run DFA file
+let bikeResult = null;   // bike DFA analysis result
+let runResult = null;    // run DFA analysis result
+let bikeFTPResult = null;  // bike power profile result
+let runFTPResult = null;   // run velocity profile result
+let cyclingTestType = 'dfa_ramp';  // or 'power_profile'
+let runningTestType = 'dfa_ramp';  // or 'velocity_profile'
+const bikeCharts = { power: null, hr: null, session: null };
+const runCharts = { power: null, hr: null, session: null };
+let trendChart = null;
+let athleteList = [];
+let bikeTimelineChart = null;
+let bikeHrTimelineChart = null;
+let runTimelineChart = null;
+let runHrTimelineChart = null;
+let ftpTrendChart = null;
+let bikeDetectedEfforts = null;
+let runDetectedEfforts = null;
+let bikeFtpMode = 'manual';
+let runFtpMode = 'manual';
+
+// ═══════════════════════════════════════════════════════════════════
+// ATHLETE AUTOCOMPLETE + AUTOFILL
+// ═══════════════════════════════════════════════════════════════════
+(function() {
+  const nameInput = document.getElementById('ramp-athlete-name');
+  const dropdown = document.getElementById('athlete-dropdown');
+  let activeIdx = -1;
+
+  async function fetchAthleteList() {
+    try {
+      const resp = await fetch('/athlete_list');
+      const data = await resp.json();
+      if (data.status === 'ok') athleteList = data.athletes || [];
+    } catch (e) { /* silent */ }
+  }
+
+  function showDropdown(matches) {
+    if (!matches.length) { dropdown.hidden = true; return; }
+    activeIdx = -1;
+    dropdown.innerHTML = matches.map((name, i) =>
+      `<div class="athlete-dropdown-item" data-idx="${i}">${name}</div>`
+    ).join('');
+    dropdown.hidden = false;
+    dropdown.querySelectorAll('.athlete-dropdown-item').forEach(el => {
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        selectAthlete(el.textContent);
+      });
+    });
+  }
+
+  function selectAthlete(name) {
+    nameInput.value = name;
+    dropdown.hidden = true;
+    loadAthleteProfile(name);
+  }
+
+  nameInput.addEventListener('input', () => {
+    const val = nameInput.value.trim().toLowerCase();
+    if (!val) { dropdown.hidden = true; return; }
+    const matches = athleteList.filter(n => n.toLowerCase().includes(val));
+    showDropdown(matches);
+  });
+
+  nameInput.addEventListener('focus', () => {
+    const val = nameInput.value.trim().toLowerCase();
+    if (val && athleteList.length) {
+      const matches = athleteList.filter(n => n.toLowerCase().includes(val));
+      showDropdown(matches);
+    } else if (!val && athleteList.length) {
+      showDropdown(athleteList);
+    }
+  });
+
+  nameInput.addEventListener('blur', () => {
+    setTimeout(() => {
+      dropdown.hidden = true;
+      // Auto-fill if typed name matches an athlete (case-insensitive)
+      const val = nameInput.value.trim();
+      if (val) {
+        const match = athleteList.find(n => n.toLowerCase() === val.toLowerCase());
+        if (match) {
+          nameInput.value = match; // normalise casing
+          loadAthleteProfile(match);
+        }
+      }
+    }, 150);
+  });
+
+  nameInput.addEventListener('keydown', e => {
+    const items = dropdown.querySelectorAll('.athlete-dropdown-item');
+    if (dropdown.hidden || !items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeIdx = Math.min(activeIdx + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeIdx = Math.max(activeIdx - 1, 0);
+      items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      e.preventDefault();
+      selectAthlete(items[activeIdx].textContent);
+    }
+  });
+
+  fetchAthleteList();
+})();
+
+async function loadAthleteProfile(name) {
+  try {
+    const resp = await fetch(`/athlete_profile?name=${encodeURIComponent(name)}`);
+    const data = await resp.json();
+    if (data.status !== 'ok' || !data.profile) return;
+    const p = data.profile;
+    if (p.hrmax_bike) document.getElementById('ramp-hrmax-bike').value = p.hrmax_bike;
+    if (p.hrmax_run) document.getElementById('ramp-hrmax-run').value = p.hrmax_run;
+    if (p.weight_kg) document.getElementById('ramp-weight-kg').value = p.weight_kg;
+    if (p.threshold_pace) document.getElementById('run-threshold-pace').value = p.threshold_pace;
+    loadHistory(name);
+  } catch (e) { /* silent */ }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// HRMAX / WEIGHT HELPERS
+// ═══════════════════════════════════════════════════════════════════
+function getHRmax(sport) {
+  const id = sport === 'run' ? 'ramp-hrmax-run' : 'ramp-hrmax-bike';
+  const val = parseInt(document.getElementById(id).value);
+  return (val >= 100 && val <= 250) ? val : null;
+}
+
+function getWeightKg() {
+  const val = parseFloat(document.getElementById('ramp-weight-kg').value);
+  return (val >= 30 && val <= 200) ? val : null;
+}
+
+function wkgTag(watts, weight) {
+  if (!weight || !watts) return '';
+  return ` <span class="card-wkg">${(watts / weight).toFixed(2)} w/kg</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TEST TYPE SWITCHING
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('cycling-test-type').addEventListener('change', function() {
+  cyclingTestType = this.value;
+  const dfaInputs = document.getElementById('bike-dfa-inputs');
+  const ftpInputs = document.getElementById('bike-ftp-inputs');
+  const analyzeRow = document.getElementById('bike-ramp-analyze-row');
+
+  if (cyclingTestType === 'dfa_ramp') {
+    dfaInputs.hidden = false;
+    ftpInputs.hidden = true;
+    analyzeRow.hidden = false;
+  } else {
+    dfaInputs.hidden = true;
+    ftpInputs.hidden = false;
+    analyzeRow.hidden = true;
+  }
+  // Clear previous results for this sport
+  clearBikeResults();
+  clearBikeFTPResults();
+});
+
+document.getElementById('running-test-type').addEventListener('change', function() {
+  runningTestType = this.value;
+  const dfaInputs = document.getElementById('run-dfa-inputs');
+  const ftpInputs = document.getElementById('run-ftp-inputs');
+  const analyzeRow = document.getElementById('run-ramp-analyze-row');
+
+  if (runningTestType === 'dfa_ramp') {
+    dfaInputs.hidden = false;
+    ftpInputs.hidden = true;
+    analyzeRow.hidden = false;
+  } else {
+    dfaInputs.hidden = true;
+    ftpInputs.hidden = false;
+    analyzeRow.hidden = true;
+  }
+  clearRunResults();
+  clearRunFTPResults();
+});
+
+// FTP mode toggles (bike)
+document.getElementById('bike-ftp-btn-manual').addEventListener('click', function() {
+  bikeFtpMode = 'manual';
+  document.getElementById('bike-ftp-btn-manual').classList.add('active');
+  document.getElementById('bike-ftp-btn-fit').classList.remove('active');
+  document.getElementById('bike-ftp-manual-section').hidden = false;
+  document.getElementById('bike-ftp-fit-section').hidden = true;
+});
+document.getElementById('bike-ftp-btn-fit').addEventListener('click', function() {
+  bikeFtpMode = 'fit';
+  document.getElementById('bike-ftp-btn-fit').classList.add('active');
+  document.getElementById('bike-ftp-btn-manual').classList.remove('active');
+  document.getElementById('bike-ftp-manual-section').hidden = true;
+  document.getElementById('bike-ftp-fit-section').hidden = false;
+});
+
+// FTP mode toggles (run)
+document.getElementById('run-ftp-btn-manual').addEventListener('click', function() {
+  runFtpMode = 'manual';
+  document.getElementById('run-ftp-btn-manual').classList.add('active');
+  document.getElementById('run-ftp-btn-fit').classList.remove('active');
+  document.getElementById('run-ftp-manual-section').hidden = false;
+  document.getElementById('run-ftp-fit-section').hidden = true;
+});
+document.getElementById('run-ftp-btn-fit').addEventListener('click', function() {
+  runFtpMode = 'fit';
+  document.getElementById('run-ftp-btn-fit').classList.add('active');
+  document.getElementById('run-ftp-btn-manual').classList.remove('active');
+  document.getElementById('run-ftp-manual-section').hidden = true;
+  document.getElementById('run-ftp-fit-section').hidden = false;
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// FILE UPLOAD — BIKE DFA RAMP
+// ═══════════════════════════════════════════════════════════════════
+(function() {
+  const dropZone = document.getElementById('ramp-drop-zone');
+  const fileInput = document.getElementById('ramp-file-input');
+  const fileNameDisplay = document.getElementById('ramp-file-name');
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) handleBikeFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files.length) handleBikeFile(fileInput.files[0]); });
+
+  function handleBikeFile(file) {
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.fit') && !name.endsWith('.fit.gz') && !name.endsWith('.gz')) { showRampStatus('bike', 'Only .FIT or .FIT.GZ files are supported.', 'error'); return; }
+    rampFile = file;
+    fileNameDisplay.textContent = file.name;
+    fileNameDisplay.hidden = false;
+    clearBikeResults();
+    updateBikeAnalyzeBtn();
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// FILE UPLOAD — RUN DFA RAMP
+// ═══════════════════════════════════════════════════════════════════
+(function() {
+  const runDropZone = document.getElementById('run-drop-zone');
+  const runFileInput = document.getElementById('run-file-input');
+  const runFileNameDisplay = document.getElementById('run-file-name');
+
+  runDropZone.addEventListener('click', () => runFileInput.click());
+  runDropZone.addEventListener('dragover', e => { e.preventDefault(); runDropZone.classList.add('drag-over'); });
+  runDropZone.addEventListener('dragleave', () => runDropZone.classList.remove('drag-over'));
+  runDropZone.addEventListener('drop', e => {
+    e.preventDefault(); runDropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) handleRunFile(e.dataTransfer.files[0]);
+  });
+  runFileInput.addEventListener('change', () => { if (runFileInput.files.length) handleRunFile(runFileInput.files[0]); });
+
+  function handleRunFile(file) {
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.fit') && !name.endsWith('.fit.gz') && !name.endsWith('.gz')) { showRampStatus('run', 'Only .FIT or .FIT.GZ files are supported.', 'error'); return; }
+    runFile = file;
+    runFileNameDisplay.textContent = file.name;
+    runFileNameDisplay.hidden = false;
+    clearRunResults();
+    updateRunAnalyzeBtn();
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// FILE UPLOAD — BIKE FTP FIT
+// ═══════════════════════════════════════════════════════════════════
+(function() {
+  const dz = document.getElementById('bike-ftp-drop-zone');
+  const fi = document.getElementById('bike-ftp-file-input');
+  const btn = document.getElementById('bike-ftp-analyze-btn');
+
+  dz.addEventListener('click', () => fi.click());
+  dz.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fi.click(); });
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleBikeFTPFile(e.dataTransfer.files[0]); });
+  fi.addEventListener('change', e => { if (e.target.files[0]) handleBikeFTPFile(e.target.files[0]); });
+
+  function handleBikeFTPFile(file) {
+    const nl = file.name.toLowerCase();
+    if (!nl.endsWith('.fit') && !nl.endsWith('.fit.gz') && !nl.endsWith('.gz')) { showFtpStatus('bike', 'Please select a .FIT or .FIT.GZ file.', 'error'); return; }
+    document.getElementById('bike-ftp-file-name').textContent = `${file.name}  (${(file.size/1024).toFixed(0)} KB)`;
+    document.getElementById('bike-ftp-file-name').hidden = false;
+    btn.disabled = false;
+    btn._file = file;
+    hideFtpStatus('bike');
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// FILE UPLOAD — RUN FTP FIT
+// ═══════════════════════════════════════════════════════════════════
+(function() {
+  const dz = document.getElementById('run-ftp-drop-zone');
+  const fi = document.getElementById('run-ftp-file-input');
+  const btn = document.getElementById('run-ftp-analyze-btn');
+
+  dz.addEventListener('click', () => fi.click());
+  dz.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fi.click(); });
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleRunFTPFile(e.dataTransfer.files[0]); });
+  fi.addEventListener('change', e => { if (e.target.files[0]) handleRunFTPFile(e.target.files[0]); });
+
+  function handleRunFTPFile(file) {
+    const nl = file.name.toLowerCase();
+    if (!nl.endsWith('.fit') && !nl.endsWith('.fit.gz') && !nl.endsWith('.gz')) { showFtpStatus('run', 'Please select a .FIT or .FIT.GZ file.', 'error'); return; }
+    document.getElementById('run-ftp-file-name').textContent = `${file.name}  (${(file.size/1024).toFixed(0)} KB)`;
+    document.getElementById('run-ftp-file-name').hidden = false;
+    btn.disabled = false;
+    btn._file = file;
+    hideFtpStatus('run');
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// HEARTBEAT + SHUTDOWN
+// ═══════════════════════════════════════════════════════════════════
+setInterval(() => fetch('/heartbeat', { method: 'POST' }).catch(() => {}), 4000);
+window.addEventListener('beforeunload', () => navigator.sendBeacon('/shutdown'));
+
+// ═══════════════════════════════════════════════════════════════════
+// ANALYZE BUTTONS (DFA Ramp)
+// ═══════════════════════════════════════════════════════════════════
+function updateBikeAnalyzeBtn() {
+  document.getElementById('ramp-bike-analyze-btn').disabled = !rampFile;
+}
+function updateRunAnalyzeBtn() {
+  document.getElementById('ramp-run-analyze-btn').disabled = !runFile;
+}
+
+document.getElementById('ramp-bike-analyze-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('ramp-bike-analyze-btn');
+  btn.disabled = true;
+  clearBikeResults();
+  showRampStatus('bike', 'Analyzing bike ramp test...', 'info');
+  await doBikeAnalysis();
+  updateBikeAnalyzeBtn();
+  updateSaveButton();
+  updateCombinedReport();
+});
+
+document.getElementById('ramp-run-analyze-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('ramp-run-analyze-btn');
+  btn.disabled = true;
+  clearRunResults();
+  showRampStatus('run', 'Analyzing run ramp test...', 'info');
+  await doRunAnalysis();
+  updateRunAnalyzeBtn();
+  updateSaveButton();
+  updateCombinedReport();
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// STATUS BARS
+// ═══════════════════════════════════════════════════════════════════
+function showRampStatus(sport, msg, type) {
+  const bar = document.getElementById(sport === 'run' ? 'run-status-bar' : 'ramp-status-bar');
+  bar.textContent = msg; bar.className = 'status-bar status-' + (type || 'info'); bar.hidden = false;
+}
+function hideRampStatus(sport) {
+  document.getElementById(sport === 'run' ? 'run-status-bar' : 'ramp-status-bar').hidden = true;
+}
+// Aliases for legacy code paths
+function showStatus(msg, type) { showRampStatus('bike', msg, type); }
+function hideStatus() { hideRampStatus('bike'); }
+function showRunStatus(msg, type) { showRampStatus('run', msg, type); }
+function hideRunStatus() { hideRampStatus('run'); }
+
+function showFtpStatus(sport, msg, type) {
+  const id = sport === 'run' ? 'run-ftp-calc-status' : 'bike-ftp-calc-status';
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = `status-bar status-${type}`; el.hidden = false;
+}
+function hideFtpStatus(sport) {
+  const id = sport === 'run' ? 'run-ftp-calc-status' : 'bike-ftp-calc-status';
+  document.getElementById(id).hidden = true;
+}
+function showFtpDetectStatus(sport, msg, type) {
+  const id = sport === 'run' ? 'run-ftp-detect-status' : 'bike-ftp-detect-status';
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = `status-bar status-${type}`; el.hidden = false;
+}
+function hideFtpDetectStatus(sport) {
+  const id = sport === 'run' ? 'run-ftp-detect-status' : 'bike-ftp-detect-status';
+  document.getElementById(id).hidden = true;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CLEAR RESULTS
+// ═══════════════════════════════════════════════════════════════════
+function clearBikeResults() {
+  document.getElementById('bike-results-section').hidden = true;
+  Object.keys(bikeCharts).forEach(k => { if (bikeCharts[k]) { bikeCharts[k].destroy(); bikeCharts[k] = null; } });
+  bikeResult = null;
+  updateSaveButton();
+  updateCombinedReport();
+}
+function clearRunResults() {
+  document.getElementById('run-results-section').hidden = true;
+  Object.keys(runCharts).forEach(k => { if (runCharts[k]) { runCharts[k].destroy(); runCharts[k] = null; } });
+  runResult = null;
+  updateSaveButton();
+  updateCombinedReport();
+}
+function clearBikeFTPResults() {
+  document.getElementById('bike-ftp-results-section').hidden = true;
+  if (bikeTimelineChart) { bikeTimelineChart.destroy(); bikeTimelineChart = null; }
+  if (bikeHrTimelineChart) { bikeHrTimelineChart.destroy(); bikeHrTimelineChart = null; }
+  bikeFTPResult = null;
+  bikeDetectedEfforts = null;
+  document.getElementById('bike-ftp-detected-results').hidden = true;
+  updateCombinedReport();
+}
+function clearRunFTPResults() {
+  document.getElementById('run-ftp-results-section').hidden = true;
+  if (runTimelineChart) { runTimelineChart.destroy(); runTimelineChart = null; }
+  if (runHrTimelineChart) { runHrTimelineChart.destroy(); runHrTimelineChart = null; }
+  runFTPResult = null;
+  runDetectedEfforts = null;
+  document.getElementById('run-ftp-detected-results').hidden = true;
+  updateCombinedReport();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RUN PROTOCOL DEFINITION
+// ═══════════════════════════════════════════════════════════════════
+const RUN_RAMP_STEPS = [
+  { step: 1,  duration: 180, intensity: 0.70 },
+  { step: 2,  duration: 180, intensity: 0.74 },
+  { step: 3,  duration: 180, intensity: 0.78 },
+  { step: 4,  duration: 180, intensity: 0.82 },
+  { step: 5,  duration: 180, intensity: 0.86 },
+  { step: 6,  duration: 180, intensity: 0.91 },
+  { step: 7,  duration: 180, intensity: 0.95 },
+  { step: 8,  duration: 180, intensity: 0.99 },
+  { step: 9,  duration: 180, intensity: 1.03 },
+  { step: 10, duration: 180, intensity: 1.07 },
+];
+
+function parseThresholdPace(str) {
+  const m = str.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  return parseInt(m[1]) * 60 + parseInt(m[2]);
+}
+
+function paceSecondsToString(secs) {
+  const m = Math.floor(secs / 60);
+  const s = Math.round(secs % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function calcRunTargetPace(thresholdPaceSec, intensityFraction) {
+  const thresholdSpeed = 1.0 / thresholdPaceSec;
+  const targetSpeed = thresholdSpeed * intensityFraction;
+  if (targetSpeed <= 0) return null;
+  return 1.0 / targetSpeed;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ANALYSIS — BIKE DFA RAMP
+// ═══════════════════════════════════════════════════════════════════
+async function doBikeAnalysis(segmentsOverride) {
+  if (!rampFile) return;
+  showRampStatus('bike', 'Analyzing bike ramp test...', 'info');
+
+  const formData = new FormData();
+  formData.append('fit_file', rampFile);
+  if (segmentsOverride) formData.append('segments_override', JSON.stringify(segmentsOverride));
+
+  try {
+    const resp = await fetch('/analyze_ramp', { method: 'POST', body: formData });
+    const data = await resp.json();
+    if (data.status !== 'ok') { showRampStatus('bike', data.message || 'Analysis failed.', 'error'); return; }
+    bikeResult = data;
+    hideRampStatus('bike');
+    renderAllResults(data, 'bike');
+  } catch (err) {
+    showRampStatus('bike', 'Network error: ' + err.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ANALYSIS — RUN DFA RAMP
+// ═══════════════════════════════════════════════════════════════════
+async function doRunAnalysis(segmentsOverride) {
+  if (!runFile) return;
+  showRampStatus('run', 'Analyzing run ramp test...', 'info');
+
+  const paceStr = document.getElementById('run-threshold-pace').value.trim();
+  const paceSec = parseThresholdPace(paceStr);
+
+  const formData = new FormData();
+  formData.append('fit_file', runFile);
+  formData.append('protocol_type', 'run');
+  if (paceSec) formData.append('threshold_pace_sec', paceSec);
+  const tteDur = document.getElementById('run-tte-duration').value.trim();
+  if (tteDur) formData.append('tte_duration_sec', tteDur);
+  if (document.getElementById('run-skip-tte').checked) formData.append('skip_tte', 'true');
+  if (segmentsOverride) formData.append('segments_override', JSON.stringify(segmentsOverride));
+
+  try {
+    const resp = await fetch('/analyze_ramp', { method: 'POST', body: formData });
+    const data = await resp.json();
+    if (data.status !== 'ok') { showRampStatus('run', data.message || 'Analysis failed.', 'error'); return; }
+    runResult = data;
+    hideRampStatus('run');
+    renderAllResults(data, 'run');
+  } catch (err) {
+    showRampStatus('run', 'Network error: ' + err.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER ALL RESULTS (DFA Ramp, prefix-based: 'bike' or 'run')
+// ═══════════════════════════════════════════════════════════════════
+function renderAllResults(data, sport) {
+  const pfx = sport + '-';
+  const charts = sport === 'bike' ? bikeCharts : runCharts;
+  const isRun = data.protocol_type === 'run';
+  const hrmax = getHRmax(sport);
+  const weightKg = getWeightKg();
+
+  document.getElementById(sport + '-results-section').hidden = false;
+
+  buildMetaRow(data, pfx);
+  renderWarnings(data.warnings, pfx);
+  renderThresholds(data.thresholds, data.regression_power, data.regression_hr, hrmax, weightKg, isRun ? data.pace_data : null, pfx);
+  renderInsights(data, weightKg, pfx, isRun);
+
+  const chartTitle = document.getElementById(pfx + 'chart-power-title');
+  if (isRun) {
+    if (chartTitle) chartTitle.innerHTML = 'DFA &alpha;1 vs Pace';
+    renderChartPace(data.stage_data, data.regression_power, data.thresholds, data.windows, data.effort_validation, charts, pfx);
+    renderChartHR(data.stage_data, data.regression_hr, data.thresholds, data.windows, data.effort_validation, hrmax, charts, pfx);
+    renderSessionChartRun(data.timeline, data.segments, data.windows, data.thresholds, charts, pfx);
+  } else {
+    if (chartTitle) chartTitle.innerHTML = 'DFA &alpha;1 vs Power';
+    renderChartPower(data.stage_data, data.regression_power, data.thresholds, data.windows, data.effort_validation, charts, pfx);
+    renderChartHR(data.stage_data, data.regression_hr, data.thresholds, data.windows, data.effort_validation, hrmax, charts, pfx);
+    renderSessionChart(data.timeline, data.segments, data.windows, data.thresholds, charts, pfx);
+  }
+
+  renderSegments(data.segments, data.timeline, pfx, sport);
+  renderAdvancedArchetype(data.archetype, pfx);
+  showRampPrescription(data, sport, sport);
+  updateSaveButton();
+  updateCombinedReport();
+
+  const name = document.getElementById('ramp-athlete-name').value.trim();
+  if (name) loadHistory(name);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// META ROW
+// ═══════════════════════════════════════════════════════════════════
+function statusColor(status) {
+  const map = { VALID: '#22c55e', FLAGGED: '#f59e0b', INVALID: '#ef4444', ABSENT: '#6b7280' };
+  return map[status] || '#6b7280';
+}
+
+function buildMetaRow(data, pfx) {
+  const row = document.getElementById(pfx + 'meta-row');
+  const rv = data.ramp_validation || {};
+  const ev = data.effort_validation || {};
+  const dq = data.data_quality || {};
+  const reg = data.regression_power || {};
+
+  const chips = [];
+  chips.push(`<span class="meta-chip">Source: <strong>${data.source || 'HRV'}</strong></span>`);
+  chips.push(`<span class="meta-chip">Stages: <strong>${rv.stages_completed || '?'} / 10</strong></span>`);
+  chips.push(`<span class="meta-chip">Ramp: <strong style="color:${statusColor(rv.overall_status)}">${rv.overall_status || '?'}</strong></span>`);
+  chips.push(`<span class="meta-chip">Effort: <strong style="color:${statusColor(ev.status)}">${ev.status || '?'}</strong></span>`);
+  const artifactPct = dq.artifact_rate_ramp != null ? dq.artifact_rate_ramp.toFixed(1) : '?';
+  chips.push(`<span class="meta-chip">Artifact: <strong>${artifactPct}%</strong></span>`);
+  if (reg.r2 != null) chips.push(`<span class="meta-chip">R&sup2;: <strong>${reg.r2.toFixed(3)}</strong></span>`);
+  row.innerHTML = chips.join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// WARNINGS
+// ═══════════════════════════════════════════════════════════════════
+function renderWarnings(warnings, pfx) {
+  const bar = document.getElementById(pfx + 'warnings-bar');
+  if (!warnings || !warnings.length) { bar.hidden = true; return; }
+  bar.hidden = false;
+  bar.innerHTML = warnings.map(w => `<div class="flag-warning">${w}</div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// THRESHOLD DISPLAY
+// ═══════════════════════════════════════════════════════════════════
+function renderThresholds(thr, regP, regH, hrmax, weight, paceData, pfx) {
+  const cards = document.getElementById(pfx + 'threshold-cards');
+  const extLabel = thr.hrvt2_extrapolated ? 'Extrapolated' : 'Direct';
+  const isRun = !!paceData;
+
+  function pctTag(hr) {
+    if (!hrmax || !hr) return '';
+    return ` <span class="card-pct-hrmax">${((hr / hrmax) * 100).toFixed(1)}% max</span>`;
+  }
+
+  if (isRun) {
+    cards.innerHTML = `
+      <div class="card" style="border-left-color:#3b82f6">
+        <div class="card-label">HRVT1 Standard</div>
+        <div class="card-value">${paceData.hrvt1s_pace || '--:--'}/km</div>
+        <div class="card-unit">${thr.hrvt1s_power ? thr.hrvt1s_power.toFixed(2) + ' m/s' : ''} &middot; ${thr.hrvt1s_hr ? thr.hrvt1s_hr + ' bpm' : ''}${pctTag(thr.hrvt1s_hr)}</div>
+        <div class="card-note">&alpha;1 = 0.75</div>
+      </div>
+      <div class="card" style="border-left-color:#22c55e">
+        <div class="card-label">HRVT1 Individualised</div>
+        <div class="card-value">${paceData.hrvt1c_pace || '--:--'}/km</div>
+        <div class="card-unit">${thr.hrvt1c_power ? thr.hrvt1c_power.toFixed(2) + ' m/s' : ''} &middot; ${thr.hrvt1c_hr ? thr.hrvt1c_hr + ' bpm' : ''}${pctTag(thr.hrvt1c_hr)}</div>
+        <div class="card-note">&alpha;1 = ${thr.a1_star || '?'} (Rogers 2024)</div>
+      </div>
+      <div class="card" style="border-left-color:#ef4444">
+        <div class="card-label">HRVT2 / Threshold</div>
+        <div class="card-value">${paceData.hrvt2_pace || '--:--'}/km</div>
+        <div class="card-unit">${thr.hrvt2_power ? thr.hrvt2_power.toFixed(2) + ' m/s' : ''} &middot; ${thr.hrvt2_hr ? thr.hrvt2_hr + ' bpm' : ''}${pctTag(thr.hrvt2_hr)}</div>
+        <div class="card-note">&alpha;1 = 0.50 &middot; ${extLabel}</div>
+      </div>`;
+  } else {
+    const ciText = thr.hrvt2_ci_95 ? ` (95% CI: ${thr.hrvt2_ci_95[0]}\u2013${thr.hrvt2_ci_95[1]}W)` : '';
+    cards.innerHTML = `
+      <div class="card" style="border-left-color:#3b82f6">
+        <div class="card-label">HRVT1 Standard</div>
+        <div class="card-value">${thr.hrvt1s_power ? thr.hrvt1s_power + ' W' : '&mdash;'}${wkgTag(thr.hrvt1s_power, weight)}</div>
+        <div class="card-unit">${thr.hrvt1s_hr ? thr.hrvt1s_hr + ' bpm' : ''}${pctTag(thr.hrvt1s_hr)}</div>
+        <div class="card-note">&alpha;1 = 0.75</div>
+      </div>
+      <div class="card" style="border-left-color:#22c55e">
+        <div class="card-label">HRVT1 Individualised</div>
+        <div class="card-value">${thr.hrvt1c_power ? thr.hrvt1c_power + ' W' : '&mdash;'}${wkgTag(thr.hrvt1c_power, weight)}</div>
+        <div class="card-unit">${thr.hrvt1c_hr ? thr.hrvt1c_hr + ' bpm' : ''}${pctTag(thr.hrvt1c_hr)}</div>
+        <div class="card-note">&alpha;1 = ${thr.a1_star || '?'} (Rogers 2024)</div>
+      </div>
+      <div class="card" style="border-left-color:#ef4444">
+        <div class="card-label">HRVT2 / FTP</div>
+        <div class="card-value">${thr.hrvt2_power ? thr.hrvt2_power + ' W' : '&mdash;'}${wkgTag(thr.hrvt2_power, weight)}</div>
+        <div class="card-unit">${thr.hrvt2_hr ? thr.hrvt2_hr + ' bpm' : ''}${pctTag(thr.hrvt2_hr)}${ciText}</div>
+        <div class="card-note">&alpha;1 = 0.50 &middot; ${extLabel}</div>
+      </div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INSIGHTS PANEL
+// ═══════════════════════════════════════════════════════════════════
+function renderInsights(data, weight, pfx, isRun) {
+  const arch = data.archetype || {};
+  const ev = data.effort_validation || {};
+
+  document.getElementById(pfx + 'profile-section-title').hidden = false;
+  document.getElementById(pfx + 'profile-grid').hidden = false;
+
+  document.getElementById(pfx + 'archetype-label').textContent = arch.archetype || 'Undetermined';
+  let confText = arch.confidence === 'high' ? 'Full Confidence' : arch.confidence === 'medium' ? 'Reduced Confidence' : 'Threshold Ratios Only';
+  document.getElementById(pfx + 'archetype-confidence').textContent = confText;
+
+  const ceilingFlag = document.getElementById(pfx + 'ceiling-flag');
+  ceilingFlag.removeAttribute('hidden');
+  ceilingFlag.style.display = arch.ceiling_limited ? 'inline-block' : 'none';
+
+  const devCard = document.getElementById(pfx + 'dev-level-card');
+  const dev = arch.development_level;
+  if (dev) {
+    document.getElementById(pfx + 'dev-level-label').textContent = dev.level;
+    document.getElementById(pfx + 'dev-level-note').textContent = dev.note;
+    devCard.hidden = false;
+  } else { devCard.hidden = true; }
+
+  const powerCard = document.getElementById(pfx + '3min-power-card');
+  const tteData = data.tte_data || {};
+
+  if (isRun && tteData.max_3min_speed) {
+    document.getElementById(pfx + '3min-power-value').innerHTML = `${tteData.max_3min_pace || '--:--'}/km`;
+    let detail = `${tteData.max_3min_speed.toFixed(2)} m/s`;
+    if (ev.status) detail = ev.status + ' \u00b7 ' + detail;
+    if (tteData.d_prime_metres) detail += ` \u00b7 D\u2032 = ${tteData.d_prime_metres}m`;
+    if (tteData.tte_duration_sec) detail += ` \u00b7 TTE: ${Math.round(tteData.tte_duration_sec)}s`;
+    if (tteData.conservative) detail += ' (conservative)';
+    document.getElementById(pfx + '3min-power-detail').textContent = detail;
+    powerCard.hidden = false;
+  } else if (ev.avg_power && !isRun) {
+    const pwrW = Math.round(ev.avg_power);
+    document.getElementById(pfx + '3min-power-value').innerHTML = pwrW + ' W' + wkgTag(pwrW, weight);
+    let detail = '';
+    if (ev.status) detail += ev.status;
+    if (ev.duration_sec) detail += ' \u00b7 ' + Math.round(ev.duration_sec) + 's';
+    document.getElementById(pfx + '3min-power-detail').textContent = detail;
+    powerCard.hidden = false;
+  } else { powerCard.hidden = true; }
+
+  const swGrid = document.getElementById(pfx + 'sw-grid');
+  const fb = arch.feedback || {};
+  const strengths = fb.strengths || [];
+  const weaknesses = fb.weaknesses || [];
+  if (strengths.length > 0 || weaknesses.length > 0) {
+    document.getElementById(pfx + 'strengths-list').innerHTML =
+      strengths.length > 0 ? strengths.map(s => `<div class="sw-item sw-item-strength">${s}</div>`).join('') : '<div class="sw-item sw-empty">No notable strengths identified</div>';
+    document.getElementById(pfx + 'weaknesses-list').innerHTML =
+      weaknesses.length > 0 ? weaknesses.map(s => `<div class="sw-item sw-item-weakness">${s}</div>`).join('') : '<div class="sw-item sw-empty">No notable weaknesses identified</div>';
+    swGrid.hidden = false;
+  } else { swGrid.hidden = true; }
+
+  const recCard = document.getElementById(pfx + 'training-rec-card');
+  const recs = arch.training_recommendations || [];
+  if (recs.length > 0) {
+    document.getElementById(pfx + 'training-rec-list').innerHTML = recs.map(r => `<li class="training-rec-item">${r}</li>`).join('');
+    recCard.hidden = false;
+  } else { recCard.hidden = true; }
+
+  const warningsCard = document.getElementById(pfx + 'profile-warnings-card');
+  const warningsDiv = document.getElementById(pfx + 'profile-warnings');
+  const notes = [];
+  if (arch.recommendation) notes.push(arch.recommendation);
+  if (arch.flags && arch.flags.length > 0) arch.flags.forEach(f => notes.push(f));
+  if (notes.length > 0) {
+    warningsDiv.innerHTML = notes.map(n => `<div class="ramp-profile-warning">${n}</div>`).join('');
+    warningsCard.hidden = false;
+  } else { warningsCard.hidden = true; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SEGMENT VISUALIZATION
+// ═══════════════════════════════════════════════════════════════════
+function fmtTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+function renderSegments(seg, timeline, pfx, sport) {
+  const bar = document.getElementById(pfx + 'segment-bar');
+  const totalDur = timeline.length > 0 ? timeline[timeline.length - 1].t : 1;
+
+  let html = '';
+  if (seg.warmup) { const pct = ((seg.warmup[1] - seg.warmup[0]) / totalDur * 100).toFixed(1); html += `<div class="ramp-seg ramp-seg-warmup" style="flex:${pct}" title="Warm-up ${fmtTime(seg.warmup[0])}-${fmtTime(seg.warmup[1])}">WU</div>`; }
+  if (seg.stages) { seg.stages.forEach((s, i) => { const pct = (s.duration_sec / totalDur * 100).toFixed(1); const cls = i % 2 === 0 ? 'ramp-seg-stage' : 'ramp-seg-stage-alt'; html += `<div class="ramp-seg ${cls}" style="flex:${pct}" title="Stage ${s.stage_number}: ${s.mean_power}W (${fmtTime(s.start_sec)}-${fmtTime(s.end_sec)})">${s.stage_number}</div>`; }); }
+  if (seg.recovery) { const pct = ((seg.recovery[1] - seg.recovery[0]) / totalDur * 100).toFixed(1); html += `<div class="ramp-seg ramp-seg-recovery" style="flex:${pct}" title="Recovery ${fmtTime(seg.recovery[0])}-${fmtTime(seg.recovery[1])}">REC</div>`; }
+  if (seg.max_effort) { const pct = ((seg.max_effort[1] - seg.max_effort[0]) / totalDur * 100).toFixed(1); html += `<div class="ramp-seg ramp-seg-effort" style="flex:${pct}" title="Max Effort ${fmtTime(seg.max_effort[0])}-${fmtTime(seg.max_effort[1])}">MAX</div>`; }
+  if (seg.cooldown_start) { const pct = ((totalDur - seg.cooldown_start) / totalDur * 100).toFixed(1); html += `<div class="ramp-seg ramp-seg-cooldown" style="flex:${pct}" title="Cooldown from ${fmtTime(seg.cooldown_start)}">CD</div>`; }
+  bar.innerHTML = html;
+
+  const info = document.getElementById(pfx + 'segment-info');
+  info.innerHTML = `<span>Stages: <strong>${(seg.stages || []).length}</strong></span><span>Warmup: <strong>${seg.warmup_power ? Math.round(seg.warmup_power) + 'W' : '?'}</strong></span><span>Peak: <strong>${seg.ramp_peak_power ? Math.round(seg.ramp_peak_power) + 'W' : '?'}</strong></span><span>Max Effort: <strong>${seg.max_effort ? 'Detected' : 'Not found'}</strong></span>`;
+
+  document.getElementById(pfx + 'toggle-adjust').onclick = () => {
+    const adj = document.getElementById(pfx + 'manual-adjust');
+    adj.hidden = !adj.hidden;
+    if (!adj.hidden) populateAdjustGrid(seg, pfx);
+  };
+  document.getElementById(pfx + 'reanalyze-btn').onclick = () => {
+    const override = collectOverride(pfx);
+    if (override) {
+      if (sport === 'run') doRunAnalysis(override);
+      else doBikeAnalysis(override);
+    }
+  };
+}
+
+function populateAdjustGrid(seg, pfx) {
+  const grid = document.getElementById(pfx + 'adjust-grid');
+  let html = `<div class="ramp-adjust-item"><label>Warmup End / Ramp Start</label><input type="text" id="${pfx}adj-ramp-start" value="${fmtTime(seg.ramp_start)}" /></div>`;
+  (seg.stages || []).forEach((s, i) => {
+    html += `<div class="ramp-adjust-item"><label>Stage ${s.stage_number} Start</label><input type="text" id="${pfx}adj-stage-${i}-start" value="${fmtTime(s.start_sec)}" /></div>`;
+    html += `<div class="ramp-adjust-item"><label>Stage ${s.stage_number} End</label><input type="text" id="${pfx}adj-stage-${i}-end" value="${fmtTime(s.end_sec)}" /></div>`;
+  });
+  html += `<div class="ramp-adjust-item"><label>Max Effort Start (blank = absent)</label><input type="text" id="${pfx}adj-effort-start" value="${seg.max_effort ? fmtTime(seg.max_effort[0]) : ''}" /></div>`;
+  html += `<div class="ramp-adjust-item"><label>Max Effort End</label><input type="text" id="${pfx}adj-effort-end" value="${seg.max_effort ? fmtTime(seg.max_effort[1]) : ''}" /></div>`;
+  grid.innerHTML = html;
+}
+
+function parseTime(str) {
+  if (!str || !str.trim()) return null;
+  const parts = str.trim().split(':');
+  return parseInt(parts[0]) * 60 + parseInt(parts[1] || 0);
+}
+
+function collectOverride(pfx) {
+  const rampStart = parseTime(document.getElementById(pfx + 'adj-ramp-start')?.value);
+  if (rampStart === null) { showRampStatus('bike', 'Invalid ramp start time', 'error'); return null; }
+
+  const stages = [];
+  let i = 0;
+  while (document.getElementById(`${pfx}adj-stage-${i}-start`)) {
+    const s = parseTime(document.getElementById(`${pfx}adj-stage-${i}-start`).value);
+    const e = parseTime(document.getElementById(`${pfx}adj-stage-${i}-end`).value);
+    if (s !== null && e !== null) stages.push({ start_sec: s, end_sec: e });
+    i++;
+  }
+
+  const effortStart = parseTime(document.getElementById(pfx + 'adj-effort-start')?.value);
+  const effortEnd = parseTime(document.getElementById(pfx + 'adj-effort-end')?.value);
+  const maxEffort = (effortStart !== null && effortEnd !== null) ? [effortStart, effortEnd] : null;
+
+  return { warmup: [0, rampStart], stages, max_effort: maxEffort };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ARCHETYPE METRICS (Advanced)
+// ═══════════════════════════════════════════════════════════════════
+function renderAdvancedArchetype(arch, pfx) {
+  if (!arch) return;
+  const div = document.getElementById(pfx + 'archetype-metrics');
+  const confLabel = arch.confidence === 'high' ? 'Full Confidence' : arch.confidence === 'medium' ? 'Reduced Confidence' : 'Threshold Ratios Only';
+  const methodLabel = arch.method === 'full' ? 'Full (AFU/AR)' : arch.method === 'tsr_atpr_only' ? 'Fallback (TSR/ATPR)' : 'Insufficient Data';
+
+  div.innerHTML = `
+    <h3 class="section-title">Archetype Classification Detail</h3>
+    <div class="meta-row">
+      <span class="meta-chip">Archetype: <strong>${arch.archetype || '?'}</strong></span>
+      <span class="meta-chip">Confidence: <strong>${confLabel}</strong></span>
+      <span class="meta-chip">Method: <strong>${methodLabel}</strong></span>
+    </div>
+    <div class="meta-row" style="margin-top:0.3rem">
+      ${arch.afu !== null && arch.afu !== undefined ? `<span class="meta-chip">AFU: <strong>${(arch.afu * 100).toFixed(1)}%</strong></span>` : ''}
+      ${arch.anfu !== null && arch.anfu !== undefined ? `<span class="meta-chip">AnFU: <strong>${(arch.anfu * 100).toFixed(1)}%</strong></span>` : ''}
+      ${arch.ar !== null && arch.ar !== undefined ? `<span class="meta-chip">AR: <strong>${(arch.ar * 100).toFixed(1)}%</strong></span>` : ''}
+      ${arch.tsr !== null && arch.tsr !== undefined ? `<span class="meta-chip">TSR: <strong>${(arch.tsr * 100).toFixed(1)}%</strong></span>` : ''}
+      ${arch.atpr !== null && arch.atpr !== undefined ? `<span class="meta-chip">ATPR: <strong>${(arch.atpr * 100).toFixed(1)}%</strong></span>` : ''}
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CHART THEME + PLUGINS
+// ═══════════════════════════════════════════════════════════════════
+function chartTheme() {
+  return {
+    grid: 'rgba(255,255,255,0.08)', tick: '#aaa', axisLabel: '#aaa', legend: '#aaa',
+    stageLbl: '#e5e7eb', errBar: 'rgba(59,130,246,0.5)',
+    z1Fill: 'rgba(34,197,94,0.16)', z2Fill: 'rgba(234,179,8,0.16)', z3Fill: 'rgba(239,68,68,0.14)',
+    z1Txt: 'rgba(34,197,94,0.40)', z2Txt: 'rgba(234,179,8,0.40)', z3Txt: 'rgba(239,68,68,0.35)',
+    refLine: 'rgba(150,150,150,0.20)', infoBg: 'rgba(0,0,0,0.6)', infoTxt: '#e5e7eb',
+    rawPow: 'rgba(99,102,241,0.15)', rawHR: 'rgba(249,115,22,0.15)',
+  };
+}
+
+const errorBarPlugin = {
+  id: 'errorBars',
+  afterDatasetsDraw(chart) {
+    const ds = chart.data.datasets.find(d => d._isStages);
+    if (!ds) return;
+    const idx = chart.data.datasets.indexOf(ds);
+    const meta = chart.getDatasetMeta(idx);
+    const ctx = chart.ctx;
+    const th = chartTheme();
+    ctx.save(); ctx.strokeStyle = th.errBar; ctx.lineWidth = 1.5;
+    meta.data.forEach((pt, i) => {
+      const d = ds.data[i];
+      if (!d || d.sd === undefined || d.sd === 0) return;
+      const yScale = chart.scales.y;
+      const yTop = yScale.getPixelForValue(d.y + d.sd);
+      const yBot = yScale.getPixelForValue(d.y - d.sd);
+      ctx.beginPath(); ctx.moveTo(pt.x, yTop); ctx.lineTo(pt.x, yBot); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pt.x - 4, yTop); ctx.lineTo(pt.x + 4, yTop); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pt.x - 4, yBot); ctx.lineTo(pt.x + 4, yBot); ctx.stroke();
+    });
+    ctx.restore();
+  }
+};
+
+const stageLabelsPlugin = {
+  id: 'stageLabels',
+  afterDatasetsDraw(chart) {
+    const ds = chart.data.datasets.find(d => d._isStages);
+    if (!ds) return;
+    const idx = chart.data.datasets.indexOf(ds);
+    const meta = chart.getDatasetMeta(idx);
+    const ctx = chart.ctx;
+    ctx.save(); ctx.fillStyle = '#e5e7eb'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+    meta.data.forEach((pt, i) => {
+      const d = ds.data[i];
+      if (d && d.label) ctx.fillText(d.label, pt.x, pt.y - 12);
+    });
+    ctx.restore();
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// CHART: DFA a1 vs POWER (Bike)
+// ═══════════════════════════════════════════════════════════════════
+function renderChartPower(stageData, reg, thr, windows, effortVal, charts, pfx) {
+  if (charts.power) charts.power.destroy();
+  const ctx = document.getElementById(pfx + 'chart-a1-power').getContext('2d');
+  const validStages = stageData.filter(s => s.a1_mean !== null && s.mean_power !== null);
+  if (!validStages.length) return;
+
+  const th = chartTheme();
+  const points = validStages.map(s => ({ x: s.mean_power, y: s.a1_mean, sd: s.a1_sd || 0, label: String(s.stage_number) }));
+  const minP = Math.min(...points.map(p => p.x)) - 20;
+  const maxStageP = Math.max(...points.map(p => p.x));
+  const effortPower = effortVal && effortVal.avg_power ? effortVal.avg_power : null;
+  const chartXMin = minP;
+  // Keep axis tight: use HRVT2 or last stage as anchor, with small padding
+  const hrvt2P = thr.hrvt2_power || maxStageP;
+  const chartXMax = effortPower
+    ? Math.max(effortPower + 10, hrvt2P + 20)
+    : Math.max(hrvt2P + 25, maxStageP + 15);
+
+  const rawPts = (windows || []).filter(w => w.power !== null && w.alpha1 !== null && w.reliable).map(w => ({ x: w.power, y: w.alpha1 }));
+  const regLine = [], extrapLine = [];
+  // Use regression n to determine which stages were used for the fit
+  const regN = reg.n || validStages.length;
+  const regMaxP = regN < validStages.length ? validStages[regN - 1].mean_power : maxStageP;
+  if (reg.slope && reg.intercept !== null) {
+    for (let p = chartXMin; p <= regMaxP + 5; p += 2) { const a1 = reg.slope * p + reg.intercept; if (a1 >= 0 && a1 <= 1.5) regLine.push({ x: p, y: a1 }); }
+    // Limit extrapolation: stop at chartXMax or where a1 hits 0
+    const extrapLimit = effortPower ? chartXMax : Math.min(chartXMax, hrvt2P + 20);
+    for (let p = regMaxP + 5; p <= extrapLimit; p += 2) { const a1 = reg.slope * p + reg.intercept; if (a1 >= 0 && a1 <= 1.5) extrapLine.push({ x: p, y: a1 }); }
+  }
+
+  const annotations = buildThresholdAnnotations(thr, 'power', reg, { lo: chartXMin, hi: chartXMax });
+  const a1Max = thr.a1_max_early || 1.2;
+
+  charts.power = new Chart(ctx, {
+    type: 'scatter',
+    data: { datasets: [
+      { label: 'Raw Windows', data: rawPts, backgroundColor: th.rawPow, pointRadius: 3, pointStyle: 'circle', pointBorderWidth: 0, order: 4 },
+      { label: 'Ramp Stages', data: points, backgroundColor: 'rgba(59,130,246,0.85)', pointRadius: 7, pointStyle: 'circle', pointBorderWidth: 2, pointBorderColor: '#1d4ed8', _isStages: true, order: 2 },
+      { label: 'Regression', data: regLine, type: 'line', borderColor: '#8b5cf6', borderWidth: 2.5, pointRadius: 0, fill: false, order: 1 },
+      { label: 'Extrapolation', data: extrapLine, type: 'line', borderColor: '#8b5cf6', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 1 },
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { annotation: { annotations },
+        tooltip: { filter: (item) => item.dataset._isStages || item.dataset.label === 'Regression',
+          callbacks: { label: (c) => { const d = c.raw; if (d.label) return `Stage ${d.label}: ${d.x}W, \u03b11=${d.y.toFixed(3)} \u00b1${d.sd.toFixed(3)}`; return `\u03b11: ${d.y.toFixed(3)}, Power: ${d.x}W`; }}},
+        legend: { labels: { color: th.legend, filter: (item) => item.text !== 'Extrapolation' } },
+      },
+      scales: {
+        x: { min: chartXMin, max: chartXMax, title: { display: true, text: 'Power (W)', color: th.axisLabel }, grid: { color: th.grid }, ticks: { color: th.tick } },
+        y: { min: 0, max: a1Max + 0.2, title: { display: true, text: 'DFA \u03b11', color: th.axisLabel }, grid: { color: th.grid }, ticks: { color: th.tick } },
+      }
+    },
+    plugins: [errorBarPlugin, stageLabelsPlugin]
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CHART: DFA a1 vs Pace (Run)
+// ═══════════════════════════════════════════════════════════════════
+function speedToPace(speedMs) { if (!speedMs || speedMs <= 0) return null; return 1000.0 / speedMs; }
+function formatPace(paceSec) { if (!paceSec || paceSec <= 0) return '--:--'; const m = Math.floor(paceSec / 60); const s = Math.round(paceSec % 60); return m + ':' + String(s).padStart(2, '0'); }
+
+function renderChartPace(stageData, reg, thr, windows, effortVal, charts, pfx) {
+  if (charts.power) charts.power.destroy();
+  const ctx = document.getElementById(pfx + 'chart-a1-power').getContext('2d');
+  const validStages = stageData.filter(s => s.a1_mean !== null && s.mean_power !== null);
+  if (!validStages.length) return;
+
+  const th = chartTheme();
+  const speedPoints = validStages.map(s => s.mean_power);
+  const minSpeed = Math.min(...speedPoints) * 0.9;
+  const maxStageSpeed = Math.max(...speedPoints);
+  const effortSpeed = effortVal && effortVal.avg_power ? effortVal.avg_power : null;
+  // Keep axis tight: use HRVT2 or last stage as anchor
+  const hrvt2Speed = thr.hrvt2_power || maxStageSpeed;
+  const chartSpeedMax = effortSpeed
+    ? Math.max(effortSpeed * 1.05, hrvt2Speed * 1.1)
+    : Math.max(hrvt2Speed * 1.08, maxStageSpeed * 1.05);
+  const chartSpeedMin = minSpeed * 0.85;
+
+  const points = validStages.map(s => ({ x: s.mean_power, y: s.a1_mean, sd: s.a1_sd || 0, label: String(s.stage_number), pace: formatPace(speedToPace(s.mean_power)) }));
+  const rawPts = (windows || []).filter(w => w.power !== null && w.alpha1 !== null && w.reliable).map(w => ({ x: w.power, y: w.alpha1 }));
+  const regLine = [], extrapLine = [];
+  const regN = reg.n || validStages.length;
+  const regMaxSpeed = regN < validStages.length ? validStages[regN - 1].mean_power : maxStageSpeed;
+  if (reg.slope && reg.intercept !== null) {
+    for (let sp = chartSpeedMin; sp <= regMaxSpeed * 1.01; sp += 0.02) { const a1 = reg.slope * sp + reg.intercept; if (a1 >= 0 && a1 <= 1.5) regLine.push({ x: sp, y: a1 }); }
+    const extrapSpeedLimit = effortSpeed ? chartSpeedMax : Math.min(chartSpeedMax, hrvt2Speed * 1.06);
+    for (let sp = regMaxSpeed * 1.01; sp <= extrapSpeedLimit; sp += 0.02) { const a1 = reg.slope * sp + reg.intercept; if (a1 >= 0 && a1 <= 1.5) extrapLine.push({ x: sp, y: a1 }); }
+  }
+
+  const annotations = buildPaceThresholdAnnotations(thr, reg, { lo: chartSpeedMin, hi: chartSpeedMax });
+  const a1Max = thr.a1_max_early || 1.2;
+
+  charts.power = new Chart(ctx, {
+    type: 'scatter',
+    data: { datasets: [
+      { label: 'Raw Windows', data: rawPts, backgroundColor: th.rawPow, pointRadius: 3, pointStyle: 'circle', pointBorderWidth: 0, order: 4 },
+      { label: 'Ramp Stages', data: points, backgroundColor: 'rgba(59,130,246,0.85)', pointRadius: 7, pointStyle: 'circle', pointBorderWidth: 2, pointBorderColor: '#1d4ed8', _isStages: true, order: 2 },
+      { label: 'Regression', data: regLine, type: 'line', borderColor: '#8b5cf6', borderWidth: 2.5, pointRadius: 0, fill: false, order: 1 },
+      { label: 'Extrapolation', data: extrapLine, type: 'line', borderColor: '#8b5cf6', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 1 },
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { annotation: { annotations },
+        tooltip: { filter: (item) => item.dataset._isStages || item.dataset.label === 'Regression',
+          callbacks: { label: (c) => { const d = c.raw; if (d.label) return `Stage ${d.label}: ${d.pace || formatPace(speedToPace(d.x))}/km, \u03b11=${d.y.toFixed(3)} \u00b1${(d.sd||0).toFixed(3)}`; return `\u03b11: ${d.y.toFixed(3)}, Pace: ${formatPace(speedToPace(d.x))}/km`; }}},
+        legend: { labels: { color: th.legend, filter: (item) => item.text !== 'Extrapolation' } },
+      },
+      scales: {
+        x: { min: chartSpeedMin, max: chartSpeedMax, title: { display: true, text: 'Pace (min:sec/km) \u2014 faster \u2192', color: th.axisLabel }, grid: { color: th.grid }, ticks: { color: th.tick, callback: function(value) { return formatPace(speedToPace(value)); }, maxTicksLimit: 12 } },
+        y: { min: 0, max: a1Max + 0.2, title: { display: true, text: 'DFA \u03b11', color: th.axisLabel }, grid: { color: th.grid }, ticks: { color: th.tick } },
+      }
+    },
+    plugins: [errorBarPlugin, stageLabelsPlugin]
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PACE THRESHOLD ANNOTATIONS
+// ═══════════════════════════════════════════════════════════════════
+function buildPaceThresholdAnnotations(thr, reg, xBounds) {
+  const ann = {};
+  const th = chartTheme();
+  const { lo, hi } = xBounds;
+  const t1 = thr.hrvt1s_power, t1c = thr.hrvt1c_power, t2 = thr.hrvt2_power;
+  const zBound = t1c || t1;
+
+  if (zBound) ann.zone1 = { type: 'box', xMax: zBound, backgroundColor: th.z1Fill, borderWidth: 0, drawTime: 'beforeDatasetsDraw' };
+  if (zBound && t2) ann.zone2 = { type: 'box', xMin: zBound, xMax: t2, backgroundColor: th.z2Fill, borderWidth: 0, drawTime: 'beforeDatasetsDraw' };
+  else if (zBound) ann.zone2 = { type: 'box', xMin: zBound, backgroundColor: th.z2Fill, borderWidth: 0, drawTime: 'beforeDatasetsDraw' };
+  if (t2) ann.zone3 = { type: 'box', xMin: t2, backgroundColor: th.z3Fill, borderWidth: 0, drawTime: 'beforeDatasetsDraw' };
+
+  const yZL = 0.25;
+  if (zBound) ann.z1Lbl = { type: 'label', xValue: (lo + zBound) / 2, yValue: yZL, content: 'Zone 1', color: th.z1Txt, font: { size: 15, weight: 'bold' }, backgroundColor: 'transparent' };
+  if (zBound && t2) ann.z2Lbl = { type: 'label', xValue: (zBound + t2) / 2, yValue: yZL, content: 'Zone 2', color: th.z2Txt, font: { size: 15, weight: 'bold' }, backgroundColor: 'transparent' };
+  if (t2) ann.z3Lbl = { type: 'label', xValue: (t2 + hi) / 2, yValue: yZL, content: 'Zone 3', color: th.z3Txt, font: { size: 15, weight: 'bold' }, backgroundColor: 'transparent' };
+
+  if (t1) ann.hrvt1sVert = { type: 'line', xMin: t1, xMax: t1, borderColor: 'rgba(59,130,246,0.55)', borderWidth: 1.5, borderDash: [6, 3], label: { display: true, content: `HRVT1s  ${formatPace(speedToPace(t1))}/km`, position: 'start', backgroundColor: 'rgba(59,130,246,0.85)', color: '#fff', font: { size: 10, weight: 'bold' }, padding: { x: 6, y: 3 } } };
+  if (t1c && thr.a1_star) ann.hrvt1cVert = { type: 'line', xMin: t1c, xMax: t1c, borderColor: 'rgba(34,197,94,0.40)', borderWidth: 1, borderDash: [4, 3], label: { display: true, content: `HRVT1c  ${formatPace(speedToPace(t1c))}/km`, position: 'start', backgroundColor: 'rgba(34,197,94,0.85)', color: '#fff', font: { size: 10 }, padding: { x: 6, y: 3 } } };
+  if (t2) ann.hrvt2Vert = { type: 'line', xMin: t2, xMax: t2, borderColor: 'rgba(239,68,68,0.55)', borderWidth: 1.5, borderDash: [6, 3], label: { display: true, content: `HRVT2  ${formatPace(speedToPace(t2))}/km`, position: 'start', backgroundColor: 'rgba(239,68,68,0.85)', color: '#fff', font: { size: 10, weight: 'bold' }, padding: { x: 6, y: 3 } } };
+
+  ann.a1ref075 = { type: 'line', yMin: 0.75, yMax: 0.75, borderColor: th.refLine, borderWidth: 1, borderDash: [4, 4] };
+  ann.a1ref050 = { type: 'line', yMin: 0.50, yMax: 0.50, borderColor: th.refLine, borderWidth: 1, borderDash: [4, 4] };
+
+  if (t1) ann.hrvt1sPt = { type: 'point', xValue: t1, yValue: 0.75, backgroundColor: '#3b82f6', borderColor: '#1d4ed8', radius: 7, borderWidth: 2 };
+  if (t1c && thr.a1_star) ann.hrvt1cPt = { type: 'point', xValue: t1c, yValue: thr.a1_star, backgroundColor: '#22c55e', borderColor: '#15803d', radius: 6, borderWidth: 2 };
+  if (t2) ann.hrvt2Pt = { type: 'point', xValue: t2, yValue: 0.50, backgroundColor: '#ef4444', borderColor: '#b91c1c', radius: 7, borderWidth: 2 };
+
+  if (reg && reg.r2) ann.infoBox = { type: 'label', position: { x: 'end', y: 'start' }, content: [`R\u00B2 = ${reg.r2.toFixed(3)}`, `n = ${reg.n || '?'} stages`], backgroundColor: th.infoBg, color: th.infoTxt, font: { size: 11 }, padding: 6 };
+  return ann;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CHART: DFA a1 vs HR
+// ═══════════════════════════════════════════════════════════════════
+function renderChartHR(stageData, reg, thr, windows, effortVal, hrmax, charts, pfx) {
+  if (charts.hr) charts.hr.destroy();
+  const ctx = document.getElementById(pfx + 'chart-a1-hr').getContext('2d');
+  const validStages = stageData.filter(s => s.a1_mean !== null && s.mean_hr !== null);
+  if (!validStages.length) return;
+
+  const th = chartTheme();
+  const points = validStages.map(s => ({ x: s.mean_hr, y: s.a1_mean, sd: s.a1_sd || 0, label: String(s.stage_number) }));
+  const minH = Math.min(...points.map(p => p.x)) - 5;
+  const maxH = Math.max(...points.map(p => p.x)) + 5;
+  const effortMaxHR = effortVal && effortVal.max_hr ? effortVal.max_hr : null;
+  const chartXMin = minH;
+  const chartXMax = hrmax ? Math.max(hrmax, (thr.hrvt2_hr || 0) + 10) : effortMaxHR ? Math.max(effortMaxHR + 5, (thr.hrvt2_hr || 0) + 10) : Math.max(maxH + 30, (thr.hrvt2_hr || 0) + 10);
+
+  const rawPts = (windows || []).filter(w => w.hr !== null && w.alpha1 !== null && w.reliable).map(w => ({ x: w.hr, y: w.alpha1 }));
+  const regLine = [], extrapLine = [];
+  if (reg.slope && reg.intercept !== null) {
+    for (let h = chartXMin; h <= maxH; h += 0.5) { const a1 = reg.slope * h + reg.intercept; if (a1 >= 0 && a1 <= 1.5) regLine.push({ x: h, y: a1 }); }
+    for (let h = maxH; h <= chartXMax; h += 0.5) { const a1 = reg.slope * h + reg.intercept; if (a1 >= 0 && a1 <= 1.5) extrapLine.push({ x: h, y: a1 }); }
+  }
+
+  const annotations = buildThresholdAnnotations(thr, 'hr', reg, { lo: chartXMin, hi: chartXMax });
+  const a1Max = thr.a1_max_early || 1.2;
+
+  charts.hr = new Chart(ctx, {
+    type: 'scatter',
+    data: { datasets: [
+      { label: 'Raw Windows', data: rawPts, backgroundColor: th.rawHR, pointRadius: 3, pointStyle: 'circle', pointBorderWidth: 0, order: 4 },
+      { label: 'Ramp Stages', data: points, backgroundColor: 'rgba(239,68,68,0.85)', pointRadius: 7, pointStyle: 'circle', pointBorderWidth: 2, pointBorderColor: '#b91c1c', _isStages: true, order: 2 },
+      { label: 'Regression', data: regLine, type: 'line', borderColor: '#8b5cf6', borderWidth: 2.5, pointRadius: 0, fill: false, order: 1 },
+      { label: 'Extrapolation', data: extrapLine, type: 'line', borderColor: '#8b5cf6', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 1 },
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { annotation: { annotations },
+        tooltip: { filter: (item) => item.dataset._isStages || item.dataset.label === 'Regression',
+          callbacks: { label: (c) => { const d = c.raw; if (d.label) return `Stage ${d.label}: ${d.x} bpm, \u03b11=${d.y.toFixed(3)}`; return `\u03b11: ${d.y.toFixed(3)}, HR: ${d.x} bpm`; }}},
+        legend: { labels: { color: th.legend, filter: (item) => item.text !== 'Extrapolation' } },
+      },
+      scales: {
+        x: { min: chartXMin, max: chartXMax, title: { display: true, text: 'Heart Rate (bpm)', color: th.axisLabel }, grid: { color: th.grid }, ticks: { color: th.tick } },
+        y: { min: 0, max: a1Max + 0.2, title: { display: true, text: 'DFA \u03b11', color: th.axisLabel }, grid: { color: th.grid }, ticks: { color: th.tick } },
+      }
+    },
+    plugins: [errorBarPlugin, stageLabelsPlugin]
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// THRESHOLD ANNOTATION BUILDER
+// ═══════════════════════════════════════════════════════════════════
+function buildThresholdAnnotations(thr, xKey, reg, xBounds) {
+  const ann = {};
+  const th = chartTheme();
+  const isPower = xKey === 'power';
+  const unit = isPower ? 'W' : ' bpm';
+  const { lo, hi } = xBounds;
+
+  const t1 = isPower ? thr.hrvt1s_power : thr.hrvt1s_hr;
+  const t1c = isPower ? thr.hrvt1c_power : thr.hrvt1c_hr;
+  const t2 = isPower ? thr.hrvt2_power : thr.hrvt2_hr;
+  const zBound = t1c || t1;
+
+  if (zBound) ann.zone1 = { type: 'box', xMax: zBound, backgroundColor: th.z1Fill, borderWidth: 0, drawTime: 'beforeDatasetsDraw' };
+  if (zBound && t2) ann.zone2 = { type: 'box', xMin: zBound, xMax: t2, backgroundColor: th.z2Fill, borderWidth: 0, drawTime: 'beforeDatasetsDraw' };
+  else if (zBound) ann.zone2 = { type: 'box', xMin: zBound, backgroundColor: th.z2Fill, borderWidth: 0, drawTime: 'beforeDatasetsDraw' };
+  if (t2) ann.zone3 = { type: 'box', xMin: t2, backgroundColor: th.z3Fill, borderWidth: 0, drawTime: 'beforeDatasetsDraw' };
+
+  const yZL = 0.25;
+  if (zBound) ann.z1Lbl = { type: 'label', xValue: (lo + zBound) / 2, yValue: yZL, content: 'Zone 1', color: th.z1Txt, font: { size: 15, weight: 'bold' }, backgroundColor: 'transparent' };
+  if (zBound && t2) ann.z2Lbl = { type: 'label', xValue: (zBound + t2) / 2, yValue: yZL, content: 'Zone 2', color: th.z2Txt, font: { size: 15, weight: 'bold' }, backgroundColor: 'transparent' };
+  if (t2) ann.z3Lbl = { type: 'label', xValue: (t2 + hi) / 2, yValue: yZL, content: 'Zone 3', color: th.z3Txt, font: { size: 15, weight: 'bold' }, backgroundColor: 'transparent' };
+
+  if (t1) ann.hrvt1sVert = { type: 'line', xMin: t1, xMax: t1, borderColor: 'rgba(59,130,246,0.55)', borderWidth: 1.5, borderDash: [6, 3], label: { display: true, content: `HRVT1s  ${Math.round(t1)}${unit}`, position: 'start', backgroundColor: 'rgba(59,130,246,0.85)', color: '#fff', font: { size: 10, weight: 'bold' }, padding: { x: 6, y: 3 } } };
+  if (t1c && thr.a1_star) ann.hrvt1cVert = { type: 'line', xMin: t1c, xMax: t1c, borderColor: 'rgba(34,197,94,0.40)', borderWidth: 1, borderDash: [4, 3], label: { display: true, content: `HRVT1c  ${Math.round(t1c)}${unit}`, position: 'start', backgroundColor: 'rgba(34,197,94,0.85)', color: '#fff', font: { size: 10 }, padding: { x: 6, y: 3 } } };
+  if (t2) ann.hrvt2Vert = { type: 'line', xMin: t2, xMax: t2, borderColor: 'rgba(239,68,68,0.55)', borderWidth: 1.5, borderDash: [6, 3], label: { display: true, content: `HRVT2  ${Math.round(t2)}${unit}`, position: 'start', backgroundColor: 'rgba(239,68,68,0.85)', color: '#fff', font: { size: 10, weight: 'bold' }, padding: { x: 6, y: 3 } } };
+
+  ann.a1ref075 = { type: 'line', yMin: 0.75, yMax: 0.75, borderColor: th.refLine, borderWidth: 1, borderDash: [4, 4] };
+  ann.a1ref050 = { type: 'line', yMin: 0.50, yMax: 0.50, borderColor: th.refLine, borderWidth: 1, borderDash: [4, 4] };
+
+  if (t1) ann.hrvt1sPt = { type: 'point', xValue: t1, yValue: 0.75, backgroundColor: '#3b82f6', borderColor: '#1d4ed8', radius: 7, borderWidth: 2 };
+  if (t1c && thr.a1_star) ann.hrvt1cPt = { type: 'point', xValue: t1c, yValue: thr.a1_star, backgroundColor: '#22c55e', borderColor: '#15803d', radius: 6, borderWidth: 2 };
+  if (t2) ann.hrvt2Pt = { type: 'point', xValue: t2, yValue: 0.50, backgroundColor: '#ef4444', borderColor: '#b91c1c', radius: 7, borderWidth: 2 };
+
+  if (reg && reg.r2) ann.infoBox = { type: 'label', position: { x: 'end', y: 'start' }, content: [`R\u00B2 = ${reg.r2.toFixed(3)}`, `n = ${reg.n || '?'} stages`], backgroundColor: th.infoBg, color: th.infoTxt, font: { size: 11 }, padding: 6 };
+  return ann;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SESSION CHART (Bike: Power + a1)
+// ═══════════════════════════════════════════════════════════════════
+function renderSessionChart(timeline, segments, windows, thr, charts, pfx) {
+  if (charts.session) charts.session.destroy();
+  const ctx = document.getElementById(pfx + 'chart-session').getContext('2d');
+  if (!timeline || !timeline.length) return;
+
+  const labels = timeline.map(p => fmtTime(p.t));
+  const powerData = timeline.map(p => p.p);
+  const a1Data = timeline.map(p => { const w = windows.find(w => Math.abs(w.time - p.t) < 3); return w ? w.alpha1 : null; });
+
+  const ann = {};
+  if (segments.warmup) { const i0 = timeline.findIndex(p => p.t >= segments.warmup[0]); const i1 = timeline.findIndex(p => p.t >= segments.warmup[1]); if (i0 >= 0 && i1 >= 0) ann.warmup = { type: 'box', xMin: i0, xMax: i1, backgroundColor: 'rgba(59,130,246,0.08)', borderWidth: 0, label: { display: true, content: 'Warm-up', position: { x: 'center', y: 'start' }, color: '#6b7280', font: { size: 9 } } }; }
+  if (segments.stages) { segments.stages.forEach((s, i) => { const i0 = timeline.findIndex(p => p.t >= s.start_sec); const i1 = timeline.findIndex(p => p.t >= s.end_sec); if (i0 >= 0 && i1 >= 0) ann['stage' + i] = { type: 'box', xMin: i0, xMax: i1, backgroundColor: i % 2 === 0 ? 'rgba(139,92,246,0.06)' : 'rgba(139,92,246,0.12)', borderWidth: 0, label: { display: true, content: String(s.stage_number), position: { x: 'center', y: 'start' }, color: '#8b5cf6', font: { size: 10, weight: 'bold' } } }; }); }
+  if (segments.max_effort) { const i0 = timeline.findIndex(p => p.t >= segments.max_effort[0]); const i1 = timeline.findIndex(p => p.t >= segments.max_effort[1]); if (i0 >= 0 && i1 >= 0) ann.effort = { type: 'box', xMin: i0, xMax: i1, backgroundColor: 'rgba(239,68,68,0.08)', borderWidth: 0, label: { display: true, content: 'Max Effort', position: { x: 'center', y: 'start' }, color: '#ef4444', font: { size: 9 } } }; }
+
+  if (segments.ramp_start !== undefined && segments.ramp_end !== undefined) {
+    const rampI0 = timeline.findIndex(p => p.t >= segments.ramp_start);
+    const rampI1 = timeline.findIndex(p => p.t >= segments.ramp_end);
+    if (rampI0 >= 0 && rampI1 >= 0) {
+      ann.thrLine075 = { type: 'line', yMin: 0.75, yMax: 0.75, xMin: rampI0, xMax: rampI1, yScaleID: 'yAlpha', borderColor: '#3b82f6', borderWidth: 1.5, borderDash: [6, 3] };
+      ann.thrLine050 = { type: 'line', yMin: 0.50, yMax: 0.50, xMin: rampI0, xMax: rampI1, yScaleID: 'yAlpha', borderColor: '#ef4444', borderWidth: 1.5, borderDash: [6, 3] };
+      if (thr.a1_star) ann.thrLineStar = { type: 'line', yMin: thr.a1_star, yMax: thr.a1_star, xMin: rampI0, xMax: rampI1, yScaleID: 'yAlpha', borderColor: '#22c55e', borderWidth: 1.5, borderDash: [6, 3] };
+    }
+  }
+
+  const th = chartTheme();
+  charts.session = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [
+      { label: 'Power (W)', data: powerData, borderColor: 'rgba(59,130,246,0.6)', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, yAxisID: 'yPower', tension: 0.1, pointRadius: 0, borderWidth: 1.5 },
+      { label: 'DFA \u03b11', data: a1Data, borderColor: 'rgba(139,92,246,0.9)', fill: false, yAxisID: 'yAlpha', tension: 0.3, pointRadius: 1.5, pointBackgroundColor: '#8b5cf6', borderWidth: 2 },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { annotation: { annotations: ann }, legend: { labels: { color: th.legend } } },
+      scales: {
+        x: { title: { display: true, text: 'Elapsed Time', color: th.axisLabel }, ticks: { maxTicksLimit: 20, color: th.tick }, grid: { color: th.grid } },
+        yPower: { type: 'linear', position: 'left', title: { display: true, text: 'Power (W)', color: '#3b82f6' }, grid: { color: th.grid }, ticks: { color: th.tick } },
+        yAlpha: { type: 'linear', position: 'right', min: 0, max: 1.5, title: { display: true, text: 'DFA \u03b11', color: '#8b5cf6' }, grid: { drawOnChartArea: false }, ticks: { color: th.tick } },
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SESSION CHART (Run: HR + a1)
+// ═══════════════════════════════════════════════════════════════════
+function renderSessionChartRun(timeline, segments, windows, thr, charts, pfx) {
+  if (charts.session) charts.session.destroy();
+  const ctx = document.getElementById(pfx + 'chart-session').getContext('2d');
+  if (!timeline || !timeline.length) return;
+
+  const labels = timeline.map(p => fmtTime(p.t));
+  const hrData = timeline.map(p => p.h);
+  const a1Data = timeline.map(p => { const w = windows.find(w => Math.abs(w.time - p.t) < 3); return w ? w.alpha1 : null; });
+
+  const ann = {};
+  if (segments.warmup) { const i0 = timeline.findIndex(p => p.t >= segments.warmup[0]); const i1 = timeline.findIndex(p => p.t >= segments.warmup[1]); if (i0 >= 0 && i1 >= 0) ann.warmup = { type: 'box', xMin: i0, xMax: i1, backgroundColor: 'rgba(59,130,246,0.08)', borderWidth: 0, label: { display: true, content: 'Warm-up', position: { x: 'center', y: 'start' }, color: '#6b7280', font: { size: 9 } } }; }
+  if (segments.stages) { segments.stages.forEach((s, i) => { const i0 = timeline.findIndex(p => p.t >= s.start_sec); const i1 = timeline.findIndex(p => p.t >= s.end_sec); if (i0 >= 0 && i1 >= 0) ann['stage' + i] = { type: 'box', xMin: i0, xMax: i1, backgroundColor: i % 2 === 0 ? 'rgba(139,92,246,0.06)' : 'rgba(139,92,246,0.12)', borderWidth: 0, label: { display: true, content: String(s.stage_number), position: { x: 'center', y: 'start' }, color: '#8b5cf6', font: { size: 10, weight: 'bold' } } }; }); }
+  if (segments.recovery) { const i0 = timeline.findIndex(p => p.t >= segments.recovery[0]); const i1 = timeline.findIndex(p => p.t >= segments.recovery[1]); if (i0 >= 0 && i1 >= 0) ann.recovery = { type: 'box', xMin: i0, xMax: i1, backgroundColor: 'rgba(34,197,94,0.06)', borderWidth: 0, label: { display: true, content: 'Recovery', position: { x: 'center', y: 'start' }, color: '#6b7280', font: { size: 9 } } }; }
+  if (segments.tte_segment) { const i0 = timeline.findIndex(p => p.t >= segments.tte_segment[0]); const i1 = timeline.findIndex(p => p.t >= segments.tte_segment[1]); if (i0 >= 0 && i1 >= 0) ann.tte = { type: 'box', xMin: i0, xMax: i1, backgroundColor: 'rgba(239,68,68,0.10)', borderWidth: 0, label: { display: true, content: 'TTE (120%)', position: { x: 'center', y: 'start' }, color: '#ef4444', font: { size: 9, weight: 'bold' } } }; }
+
+  if (segments.ramp_start !== undefined && segments.ramp_end !== undefined) {
+    const rampI0 = timeline.findIndex(p => p.t >= segments.ramp_start);
+    const rampI1 = timeline.findIndex(p => p.t >= segments.ramp_end);
+    if (rampI0 >= 0 && rampI1 >= 0) {
+      ann.thrLine075 = { type: 'line', yMin: 0.75, yMax: 0.75, xMin: rampI0, xMax: rampI1, yScaleID: 'yAlpha', borderColor: '#3b82f6', borderWidth: 1.5, borderDash: [6, 3] };
+      ann.thrLine050 = { type: 'line', yMin: 0.50, yMax: 0.50, xMin: rampI0, xMax: rampI1, yScaleID: 'yAlpha', borderColor: '#ef4444', borderWidth: 1.5, borderDash: [6, 3] };
+      if (thr.a1_star) ann.thrLineStar = { type: 'line', yMin: thr.a1_star, yMax: thr.a1_star, xMin: rampI0, xMax: rampI1, yScaleID: 'yAlpha', borderColor: '#22c55e', borderWidth: 1.5, borderDash: [6, 3] };
+    }
+  }
+  if (thr.hrvt1s_hr) ann.hrT1s = { type: 'line', yMin: thr.hrvt1s_hr, yMax: thr.hrvt1s_hr, yScaleID: 'yHR', borderColor: 'rgba(59,130,246,0.3)', borderWidth: 1, borderDash: [4, 4] };
+  if (thr.hrvt2_hr) ann.hrT2 = { type: 'line', yMin: thr.hrvt2_hr, yMax: thr.hrvt2_hr, yScaleID: 'yHR', borderColor: 'rgba(239,68,68,0.3)', borderWidth: 1, borderDash: [4, 4] };
+
+  const th = chartTheme();
+  charts.session = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [
+      { label: 'Heart Rate (bpm)', data: hrData, borderColor: 'rgba(239,68,68,0.6)', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, yAxisID: 'yHR', tension: 0.1, pointRadius: 0, borderWidth: 1.5 },
+      { label: 'DFA \u03b11', data: a1Data, borderColor: 'rgba(139,92,246,0.9)', fill: false, yAxisID: 'yAlpha', tension: 0.3, pointRadius: 1.5, pointBackgroundColor: '#8b5cf6', borderWidth: 2 },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { annotation: { annotations: ann }, legend: { labels: { color: th.legend } } },
+      scales: {
+        x: { title: { display: true, text: 'Elapsed Time', color: th.axisLabel }, ticks: { maxTicksLimit: 20, color: th.tick }, grid: { color: th.grid } },
+        yHR: { type: 'linear', position: 'left', title: { display: true, text: 'Heart Rate (bpm)', color: '#ef4444' }, grid: { color: th.grid }, ticks: { color: th.tick } },
+        yAlpha: { type: 'linear', position: 'right', min: 0, max: 1.5, title: { display: true, text: 'DFA \u03b11', color: '#8b5cf6' }, grid: { drawOnChartArea: false }, ticks: { color: th.tick } },
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FTP HELPERS
+// ═══════════════════════════════════════════════════════════════════
+function parseTimeToSeconds(timeStr) {
+  if (!timeStr) return null;
+  const parts = timeStr.trim().split(':');
+  if (parts.length !== 2) return null;
+  const mins = parseInt(parts[0], 10);
+  const secs = parseInt(parts[1], 10);
+  if (isNaN(mins) || isNaN(secs)) return null;
+  return mins * 60 + secs;
+}
+
+function formatDuration(sec) {
+  if (!sec) return '--:--';
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function computeRollingAverage(timeline, key, windowSec) {
+  const values = timeline.filter(pt => pt[key] != null);
+  if (values.length === 0) return [];
+  const result = [];
+  let windowStart = 0;
+  for (let i = 0; i < values.length; i++) {
+    const currentTime = values[i].t;
+    while (windowStart < i && (currentTime - values[windowStart].t) > windowSec) windowStart++;
+    let sum = 0, count = 0;
+    for (let j = windowStart; j <= i; j++) { sum += values[j][key]; count++; }
+    if (count > 0) result.push({ x: currentTime, y: sum / count });
+  }
+  return result;
+}
+
+function formatElapsedTime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.round(seconds % 60);
+  if (h > 0) return `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+  return `${m}:${s.toString().padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FTP FIT DETECT — BIKE
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('bike-ftp-analyze-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('bike-ftp-analyze-btn');
+  const file = btn._file;
+  if (!file) return;
+  btn.disabled = true;
+  showFtpDetectStatus('bike', 'Analyzing FIT file\u2026', 'info');
+  clearBikeFTPResults();
+
+  const formData = new FormData();
+  formData.append('fit_file', file);
+
+  try {
+    const resp = await fetch('/analyze_ftp_test', { method: 'POST', body: formData });
+    const data = await resp.json();
+    if (data.status !== 'ok') { showFtpDetectStatus('bike', data.message, 'error'); btn.disabled = false; return; }
+    hideFtpDetectStatus('bike');
+    bikeDetectedEfforts = data;
+    renderDetectedEfforts(data, 'bike');
+  } catch (err) {
+    showFtpDetectStatus('bike', `Analysis failed: ${err.message}`, 'error');
+  }
+  btn.disabled = false;
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// FTP FIT DETECT — RUN
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('run-ftp-analyze-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('run-ftp-analyze-btn');
+  const file = btn._file;
+  if (!file) return;
+  btn.disabled = true;
+  showFtpDetectStatus('run', 'Analyzing FIT file\u2026', 'info');
+  clearRunFTPResults();
+
+  const formData = new FormData();
+  formData.append('fit_file', file);
+
+  try {
+    const resp = await fetch('/analyze_ftp_test', { method: 'POST', body: formData });
+    const data = await resp.json();
+    if (data.status !== 'ok') { showFtpDetectStatus('run', data.message, 'error'); btn.disabled = false; return; }
+    hideFtpDetectStatus('run');
+    runDetectedEfforts = data;
+    renderDetectedEfforts(data, 'run');
+  } catch (err) {
+    showFtpDetectStatus('run', `Analysis failed: ${err.message}`, 'error');
+  }
+  btn.disabled = false;
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER DETECTED EFFORTS
+// ═══════════════════════════════════════════════════════════════════
+function renderDetectedEfforts(data, sportPrefix) {
+  const grid = document.getElementById(sportPrefix + '-ftp-detected-grid');
+  let html = '';
+
+  if (data.sport === 'cycling') {
+    html += renderDetectedCard('5-Minute Power', data.five_min, 'cycling-short');
+    html += renderDetectedCard('20-Minute Power', data.twenty_min, 'cycling-long');
+  } else {
+    html += renderDetectedCard('1000m', data.one_km, 'running-short');
+    html += renderDetectedCard('3000m', data.three_km, 'running-long');
+  }
+
+  grid.innerHTML = html;
+  document.getElementById(sportPrefix + '-ftp-detected-results').hidden = false;
+}
+
+function renderDetectedCard(title, effort, type) {
+  if (!effort) return `<div class="ftp-detect-card ftp-detect-${type}"><div class="ftp-detect-title">${title}</div><div class="ftp-detect-not-found">Not detected in file</div></div>`;
+
+  let metrics = '';
+  if (type.startsWith('cycling')) {
+    metrics = `
+      <div class="ftp-detect-metric"><span class="ftp-dm-label">Avg Power</span><span class="ftp-dm-value">${effort.avg_power} W</span></div>
+      ${effort.avg_hr ? `<div class="ftp-detect-metric"><span class="ftp-dm-label">Avg HR</span><span class="ftp-dm-value">${effort.avg_hr} bpm</span></div>` : ''}
+      ${effort.max_hr ? `<div class="ftp-detect-metric"><span class="ftp-dm-label">Max HR</span><span class="ftp-dm-value">${effort.max_hr} bpm</span></div>` : ''}
+      ${effort.avg_cadence ? `<div class="ftp-detect-metric"><span class="ftp-dm-label">Cadence</span><span class="ftp-dm-value">${effort.avg_cadence} rpm</span></div>` : ''}
+      ${effort.normalised_power ? `<div class="ftp-detect-metric"><span class="ftp-dm-label">NP</span><span class="ftp-dm-value">${effort.normalised_power} W</span></div>` : ''}
+      <div class="ftp-detect-metric"><span class="ftp-dm-label">Duration</span><span class="ftp-dm-value">${formatDuration(effort.duration_seconds)}</span></div>
+      <div class="ftp-detect-metric"><span class="ftp-dm-label">Start</span><span class="ftp-dm-value">${effort.start_time_str || formatDuration(effort.start_elapsed)}</span></div>`;
+  } else {
+    metrics = `
+      <div class="ftp-detect-metric"><span class="ftp-dm-label">Pace</span><span class="ftp-dm-value">${effort.pace_str} /km</span></div>
+      <div class="ftp-detect-metric"><span class="ftp-dm-label">Speed</span><span class="ftp-dm-value">${(effort.avg_speed * 3.6).toFixed(1)} km/h</span></div>
+      ${effort.avg_hr ? `<div class="ftp-detect-metric"><span class="ftp-dm-label">Avg HR</span><span class="ftp-dm-value">${effort.avg_hr} bpm</span></div>` : ''}
+      ${effort.max_hr ? `<div class="ftp-detect-metric"><span class="ftp-dm-label">Max HR</span><span class="ftp-dm-value">${effort.max_hr} bpm</span></div>` : ''}
+      <div class="ftp-detect-metric"><span class="ftp-dm-label">Time</span><span class="ftp-dm-value">${formatDuration(effort.duration_seconds)}</span></div>
+      <div class="ftp-detect-metric"><span class="ftp-dm-label">Distance</span><span class="ftp-dm-value">${effort.distance_metres} m</span></div>
+      <div class="ftp-detect-metric"><span class="ftp-dm-label">Start</span><span class="ftp-dm-value">${effort.start_time_str || formatDuration(effort.start_elapsed)}</span></div>`;
+  }
+
+  return `<div class="ftp-detect-card ftp-detect-${type}"><div class="ftp-detect-title">${title}</div>${metrics}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ACCEPT DETECTED EFFORTS — BIKE
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('bike-ftp-accept-btn').addEventListener('click', () => {
+  if (!bikeDetectedEfforts) return;
+  const weight = getWeightKg();
+  if (!weight) { showFtpStatus('bike', 'Body weight is required.', 'error'); return; }
+  const hrmax = getHRmax('bike');
+
+  if (!bikeDetectedEfforts.five_min || !bikeDetectedEfforts.twenty_min) {
+    showFtpStatus('bike', 'Both 5-min and 20-min efforts must be detected.', 'error'); return;
+  }
+  const payload = {
+    sport: 'cycling', body_weight_kg: weight, known_hrmax: hrmax,
+    five_min_power: bikeDetectedEfforts.five_min.avg_power,
+    twenty_min_power: bikeDetectedEfforts.twenty_min.avg_power,
+    five_min_hr: bikeDetectedEfforts.five_min.avg_hr,
+    five_min_max_hr: bikeDetectedEfforts.five_min.max_hr,
+    five_min_cadence: bikeDetectedEfforts.five_min.avg_cadence,
+    twenty_min_hr: bikeDetectedEfforts.twenty_min.avg_hr,
+    twenty_min_max_hr: bikeDetectedEfforts.twenty_min.max_hr,
+    twenty_min_cadence: bikeDetectedEfforts.twenty_min.avg_cadence,
+    hr_drift_pct: bikeDetectedEfforts.twenty_min.hr_drift_pct,
+    power_cv: bikeDetectedEfforts.twenty_min.power_cv,
+    power_trend_5min: bikeDetectedEfforts.five_min.power_trend,
+    first_quarter_power_20min: bikeDetectedEfforts.twenty_min.first_quarter_power,
+    last_quarter_power_20min: bikeDetectedEfforts.twenty_min.last_quarter_power,
+    last_2min_avg_power_20min: bikeDetectedEfforts.twenty_min.last_2min_avg_power,
+  };
+  calculateFTPProfile(payload, bikeDetectedEfforts, 'bike');
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// ACCEPT DETECTED EFFORTS — RUN
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('run-ftp-accept-btn').addEventListener('click', () => {
+  if (!runDetectedEfforts) return;
+  const weight = getWeightKg();
+  if (!weight) { showFtpStatus('run', 'Body weight is required.', 'error'); return; }
+  const hrmax = getHRmax('run');
+
+  if (!runDetectedEfforts.one_km || !runDetectedEfforts.three_km) {
+    showFtpStatus('run', 'Both 1000m and 3000m efforts must be detected.', 'error'); return;
+  }
+  const payload = {
+    sport: 'running', body_weight_kg: weight, known_hrmax: hrmax,
+    time_1000_seconds: runDetectedEfforts.one_km.duration_seconds,
+    time_3000_seconds: runDetectedEfforts.three_km.duration_seconds,
+    one_km_hr: runDetectedEfforts.one_km.avg_hr,
+    one_km_max_hr: runDetectedEfforts.one_km.max_hr,
+    three_km_hr: runDetectedEfforts.three_km.avg_hr,
+    three_km_max_hr: runDetectedEfforts.three_km.max_hr,
+  };
+  calculateFTPProfile(payload, runDetectedEfforts, 'run');
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// MANUAL ENTRY — CYCLING PROFILE
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('cycling-calc-btn').addEventListener('click', () => {
+  const weight = getWeightKg();
+  if (!weight) { showFtpStatus('bike', 'Body weight is required.', 'error'); return; }
+  const c5p = parseFloat(document.getElementById('c5-power').value);
+  const c20p = parseFloat(document.getElementById('c20-power').value);
+  if (!c5p || !c20p) { showFtpStatus('bike', '5-min and 20-min power values are required.', 'error'); return; }
+
+  const payload = {
+    sport: 'cycling', body_weight_kg: weight, known_hrmax: getHRmax('bike'),
+    five_min_power: c5p, twenty_min_power: c20p,
+    five_min_hr: parseFloat(document.getElementById('c5-hr').value) || null,
+    five_min_max_hr: parseFloat(document.getElementById('c5-maxhr').value) || null,
+    five_min_cadence: parseFloat(document.getElementById('c5-cadence').value) || null,
+    twenty_min_hr: parseFloat(document.getElementById('c20-hr').value) || null,
+    twenty_min_max_hr: parseFloat(document.getElementById('c20-maxhr').value) || null,
+    twenty_min_cadence: parseFloat(document.getElementById('c20-cadence').value) || null,
+  };
+  calculateFTPProfile(payload, null, 'bike');
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// MANUAL ENTRY — RUNNING PROFILE
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('running-calc-btn').addEventListener('click', () => {
+  const weight = getWeightKg();
+  if (!weight) { showFtpStatus('run', 'Body weight is required.', 'error'); return; }
+  const t1k = parseTimeToSeconds(document.getElementById('r1k-time').value);
+  const t3k = parseTimeToSeconds(document.getElementById('r3k-time').value);
+  if (!t1k || !t3k) { showFtpStatus('run', '1000m and 3000m times are required (mm:ss format).', 'error'); return; }
+
+  const payload = {
+    sport: 'running', body_weight_kg: weight, known_hrmax: getHRmax('run'),
+    time_1000_seconds: t1k, time_3000_seconds: t3k,
+    one_km_hr: parseFloat(document.getElementById('r1k-hr').value) || null,
+    one_km_max_hr: parseFloat(document.getElementById('r1k-maxhr').value) || null,
+    three_km_hr: parseFloat(document.getElementById('r3k-hr').value) || null,
+    three_km_max_hr: parseFloat(document.getElementById('r3k-maxhr').value) || null,
+  };
+  calculateFTPProfile(payload, null, 'run');
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// CALCULATE FTP PROFILE (API call)
+// ═══════════════════════════════════════════════════════════════════
+async function calculateFTPProfile(payload, fitData, sportPrefix) {
+  hideFtpStatus(sportPrefix);
+  showFtpStatus(sportPrefix, 'Calculating profile\u2026', 'info');
+
+  try {
+    const resp = await fetch('/calculate_ftp_profile', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+    if (data.status !== 'ok') { showFtpStatus(sportPrefix, data.message || 'Calculation failed.', 'error'); return; }
+    hideFtpStatus(sportPrefix);
+    if (sportPrefix === 'bike') bikeFTPResult = data;
+    else runFTPResult = data;
+    renderFTPResults(data, fitData, sportPrefix);
+    showFieldTestPrescription(data, sportPrefix, sportPrefix);
+    updateCombinedReport();
+  } catch (err) {
+    showFtpStatus(sportPrefix, `Error: ${err.message}`, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER FTP RESULTS
+// ═══════════════════════════════════════════════════════════════════
+function renderFTPResults(data, fitData, sportPrefix) {
+  const section = document.getElementById(sportPrefix + '-ftp-results-section');
+
+  document.getElementById(sportPrefix + '-ftp-results-title').textContent =
+    data.sport === 'cycling' ? 'Cycling Profile Results' : 'Running Profile Results';
+
+  document.getElementById(sportPrefix + '-ftp-ratio-value').textContent = data.ratio.toFixed(3);
+
+  const badge = document.getElementById(sportPrefix + '-ftp-profile-badge');
+  badge.textContent = data.profile;
+  badge.className = 'ftp-profile-badge';
+  if (data.profile === 'High Anaerobic') badge.classList.add('ftp-profile-anaerobic');
+  else if (data.profile === 'Balanced') badge.classList.add('ftp-profile-balanced');
+  else badge.classList.add('ftp-profile-aerobic');
+
+  const metricsGrid = document.getElementById(sportPrefix + '-ftp-metrics-grid');
+  if (data.sport === 'cycling') {
+    metricsGrid.innerHTML = `
+      <div class="ftp-metric-card ftp-mc-primary"><div class="ftp-mc-label">Estimated FTP</div><div class="ftp-mc-value">${data.estimated_ftp} W</div><div class="ftp-mc-sub">${data.ftp_wkg} W/kg</div></div>
+      <div class="ftp-metric-card"><div class="ftp-mc-label">Correction Factor</div><div class="ftp-mc-value">${data.correction_factor}</div><div class="ftp-mc-sub">20min \u00d7 ${data.correction_factor}</div></div>
+      <div class="ftp-metric-card"><div class="ftp-mc-label">5-Min W/kg</div><div class="ftp-mc-value">${data.five_min_wkg}</div></div>
+      <div class="ftp-metric-card"><div class="ftp-mc-label">Anaerobic Excess</div><div class="ftp-mc-value">${data.anaerobic_excess_watts} W</div><div class="ftp-mc-sub">5min \u2212 20min</div></div>`;
+  } else {
+    metricsGrid.innerHTML = `
+      <div class="ftp-metric-card ftp-mc-primary"><div class="ftp-mc-label">Est. Threshold Pace</div><div class="ftp-mc-value">${data.estimated_threshold_pace} /km</div></div>
+      <div class="ftp-metric-card"><div class="ftp-mc-label">Critical Speed</div><div class="ftp-mc-value">${data.estimated_critical_speed} m/s</div><div class="ftp-mc-sub">${(data.estimated_critical_speed * 3.6).toFixed(1)} km/h</div></div>
+      <div class="ftp-metric-card"><div class="ftp-mc-label">1000m Pace</div><div class="ftp-mc-value">${data.pace_1000_str} /km</div></div>
+      <div class="ftp-metric-card"><div class="ftp-mc-label">3000m Pace</div><div class="ftp-mc-value">${data.pace_3000_str} /km</div></div>
+      ${data.d_prime_estimate ? `<div class="ftp-metric-card"><div class="ftp-mc-label">D' Estimate</div><div class="ftp-mc-value">${data.d_prime_estimate} m</div></div>` : ''}`;
+  }
+
+  // Effort comparison
+  const comp = document.getElementById(sportPrefix + '-ftp-effort-comparison');
+  if (data.sport === 'cycling') {
+    comp.innerHTML = `<table class="comparison-table"><thead><tr><th>Metric</th><th>5-Minute</th><th>20-Minute</th></tr></thead><tbody>
+      <tr><td>Avg Power</td><td>${data.five_min_power} W</td><td>${data.twenty_min_power} W</td></tr>
+      ${data.five_min_hr || data.twenty_min_hr ? `<tr><td>Avg HR</td><td>${data.five_min_hr ? data.five_min_hr + ' bpm' : '\u2014'}</td><td>${data.twenty_min_hr ? data.twenty_min_hr + ' bpm' : '\u2014'}</td></tr>` : ''}
+      ${data.five_min_max_hr || data.twenty_min_max_hr ? `<tr><td>Max HR</td><td>${data.five_min_max_hr ? data.five_min_max_hr + ' bpm' : '\u2014'}</td><td>${data.twenty_min_max_hr ? data.twenty_min_max_hr + ' bpm' : '\u2014'}</td></tr>` : ''}
+      ${data.five_min_cadence || data.twenty_min_cadence ? `<tr><td>Cadence</td><td>${data.five_min_cadence ? data.five_min_cadence + ' rpm' : '\u2014'}</td><td>${data.twenty_min_cadence ? data.twenty_min_cadence + ' rpm' : '\u2014'}</td></tr>` : ''}
+    </tbody></table>`;
+  } else {
+    comp.innerHTML = `<table class="comparison-table"><thead><tr><th>Metric</th><th>1000m</th><th>3000m</th></tr></thead><tbody>
+      <tr><td>Time</td><td>${data.time_1000_str}</td><td>${data.time_3000_str}</td></tr>
+      <tr><td>Pace</td><td>${data.pace_1000_str} /km</td><td>${data.pace_3000_str} /km</td></tr>
+      <tr><td>Speed</td><td>${data.speed_1000.toFixed(2)} m/s</td><td>${data.speed_3000.toFixed(2)} m/s</td></tr>
+      ${data.one_km_hr || data.three_km_hr ? `<tr><td>Avg HR</td><td>${data.one_km_hr ? data.one_km_hr + ' bpm' : '\u2014'}</td><td>${data.three_km_hr ? data.three_km_hr + ' bpm' : '\u2014'}</td></tr>` : ''}
+    </tbody></table>`;
+  }
+
+  // HR Analysis
+  const hrSection = document.getElementById(sportPrefix + '-ftp-hr-section');
+  const hrInsights = document.getElementById(sportPrefix + '-ftp-hr-insights');
+  if (data.hr_analysis && data.hr_analysis.insights && data.hr_analysis.insights.length > 0) {
+    hrInsights.innerHTML = data.hr_analysis.insights.map(insight => `<div class="ftp-hr-insight">${insight}</div>`).join('');
+    hrSection.hidden = false;
+  } else { hrSection.hidden = true; }
+
+  // Validity flags
+  const flagsSec = document.getElementById(sportPrefix + '-ftp-flags-section');
+  if (data.validity_flags && data.validity_flags.length > 0) {
+    flagsSec.innerHTML = data.validity_flags.map(f =>
+      `<div class="flag-item flag-${f.severity}"><div><div class="flag-title">${f.check.replace(/_/g, ' ').toUpperCase()}</div><div class="flag-message">${f.message}</div></div></div>`
+    ).join('');
+    flagsSec.hidden = false;
+  } else { flagsSec.hidden = true; }
+
+  // Timeline charts
+  renderFTPTimelineCharts(data, fitData, sportPrefix);
+
+  // Save button
+  const saveBtn = document.getElementById(sportPrefix + '-ftp-save-btn');
+  const saveName = document.getElementById('ramp-athlete-name').value.trim();
+  saveBtn.onclick = async () => {
+    await saveFTPTest(saveName, data, sportPrefix);
+    loadFtpHistory(saveName, data.sport);
+  };
+
+  if (saveName) {
+    loadFtpHistory(saveName, data.sport);
+  }
+
+  section.hidden = false;
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FTP TIMELINE CHARTS
+// ═══════════════════════════════════════════════════════════════════
+function renderFTPTimelineCharts(profileData, fitData, sportPrefix) {
+  const chartSection = document.getElementById(sportPrefix + '-ftp-chart-section');
+  const tlChart = sportPrefix === 'bike' ? bikeTimelineChart : runTimelineChart;
+  const hrTlChart = sportPrefix === 'bike' ? bikeHrTimelineChart : runHrTimelineChart;
+  if (tlChart) { tlChart.destroy(); }
+  if (hrTlChart) { hrTlChart.destroy(); }
+
+  if (!fitData || !fitData.timeline || fitData.timeline.length === 0) {
+    chartSection.hidden = true; return;
+  }
+
+  const timeline = fitData.timeline;
+  const isCycling = profileData.sport === 'cycling';
+  const dataKey = isCycling ? 'p' : 's';
+  const yLabel = isCycling ? 'Power (W)' : 'Speed (km/h)';
+  const rawLabel = isCycling ? 'Power' : 'Speed';
+  const rollingLabel = isCycling ? '30s Avg Power' : '30s Avg Speed';
+
+  document.getElementById(sportPrefix + '-ftp-timeline-title').textContent = isCycling ? 'Power Over Time' : 'Speed Over Time';
+
+  const rawPoints = timeline.filter(pt => pt[dataKey] != null).map(pt => ({ x: pt.t, y: isCycling ? pt[dataKey] : pt[dataKey] * 3.6 }));
+  if (rawPoints.length === 0) { chartSection.hidden = true; return; }
+
+  const rollingRaw = computeRollingAverage(timeline, dataKey, 30);
+  const rollingPoints = rollingRaw.map(pt => ({ x: pt.x, y: isCycling ? pt.y : pt.y * 3.6 }));
+
+  const annotations = {};
+  if (isCycling && profileData.estimated_ftp != null) {
+    const ftp = profileData.estimated_ftp;
+    annotations.ftpLine = { type: 'line', yMin: ftp, yMax: ftp, borderColor: '#ef4444', borderWidth: 2, borderDash: [6,3], label: { content: `FTP / LT2  ${ftp} W`, display: true, position: 'end', color: '#ef4444', font: { size: 11 } } };
+    const lt1 = Math.round(ftp * 0.75);
+    annotations.lt1Line = { type: 'line', yMin: lt1, yMax: lt1, borderColor: '#f97316', borderWidth: 2, borderDash: [6,3], label: { content: `LT1 ~${lt1} W`, display: true, position: 'end', color: '#f97316', font: { size: 11 } } };
+  }
+  if (!isCycling && profileData.estimated_critical_speed != null) {
+    const csKmh = Math.round(profileData.estimated_critical_speed * 3.6 * 10) / 10;
+    annotations.csLine = { type: 'line', yMin: csKmh, yMax: csKmh, borderColor: '#ef4444', borderWidth: 2, borderDash: [6,3], label: { content: `Critical Speed / LT2  ${csKmh} km/h`, display: true, position: 'end', color: '#ef4444', font: { size: 11 } } };
+  }
+
+  if (isCycling) {
+    if (fitData.five_min) annotations.fiveMinBox = { type: 'box', xMin: fitData.five_min.start_elapsed, xMax: fitData.five_min.end_elapsed, backgroundColor: 'rgba(249,115,22,0.08)', borderColor: 'rgba(249,115,22,0.4)', borderWidth: 1, label: { content: `5-min: ${fitData.five_min.avg_power} W`, display: true, position: { x: 'center', y: 'start' }, color: '#f97316', font: { size: 10 } } };
+    if (fitData.twenty_min) annotations.twentyMinBox = { type: 'box', xMin: fitData.twenty_min.start_elapsed, xMax: fitData.twenty_min.end_elapsed, backgroundColor: 'rgba(59,130,246,0.08)', borderColor: 'rgba(59,130,246,0.4)', borderWidth: 1, label: { content: `20-min: ${fitData.twenty_min.avg_power} W`, display: true, position: { x: 'center', y: 'start' }, color: '#3b82f6', font: { size: 10 } } };
+  } else {
+    if (fitData.one_km) annotations.oneKmBox = { type: 'box', xMin: fitData.one_km.start_elapsed, xMax: fitData.one_km.end_elapsed, backgroundColor: 'rgba(249,115,22,0.08)', borderColor: 'rgba(249,115,22,0.4)', borderWidth: 1, label: { content: `1000m: ${fitData.one_km.pace_str} /km`, display: true, position: { x: 'center', y: 'start' }, color: '#f97316', font: { size: 10 } } };
+    if (fitData.three_km) annotations.threeKmBox = { type: 'box', xMin: fitData.three_km.start_elapsed, xMax: fitData.three_km.end_elapsed, backgroundColor: 'rgba(59,130,246,0.08)', borderColor: 'rgba(59,130,246,0.4)', borderWidth: 1, label: { content: `3000m: ${fitData.three_km.pace_str} /km`, display: true, position: { x: 'center', y: 'start' }, color: '#3b82f6', font: { size: 10 } } };
+  }
+
+  const ctx = document.getElementById(sportPrefix + '-ftp-timeline-chart').getContext('2d');
+  const newTlChart = new Chart(ctx, {
+    type: 'line',
+    data: { datasets: [
+      { label: rawLabel, data: rawPoints, borderColor: 'rgba(59,130,246,0.25)', backgroundColor: 'rgba(59,130,246,0.05)', fill: true, tension: 0, pointRadius: 0, borderWidth: 1, order: 2 },
+      { label: rollingLabel, data: rollingPoints, borderColor: 'rgba(59,130,246,0.9)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 0, borderWidth: 2, order: 1 }
+    ]},
+    options: { responsive: true, maintainAspectRatio: false, parsing: false, normalized: true,
+      plugins: { legend: { display: true, position: 'top', labels: { color: '#ccc' } }, annotation: { annotations },
+        tooltip: { mode: 'nearest', intersect: false, callbacks: { title: (items) => items.length > 0 ? formatElapsedTime(items[0].parsed.x) : '' } } },
+      scales: {
+        x: { type: 'linear', title: { display: true, text: 'Elapsed Time', font: { weight: 'bold' }, color: '#aaa' }, grid: { color: '#333' }, ticks: { color: '#aaa', maxTicksLimit: 15, callback: v => formatElapsedTime(v) } },
+        y: { title: { display: true, text: yLabel, font: { weight: 'bold' }, color: '#aaa' }, grid: { color: '#333' }, ticks: { color: '#aaa' } }
+      }
+    }
+  });
+  if (sportPrefix === 'bike') bikeTimelineChart = newTlChart;
+  else runTimelineChart = newTlChart;
+
+  // HR chart
+  const hrPoints = timeline.filter(pt => pt.h != null).map(pt => ({ x: pt.t, y: pt.h }));
+  if (hrPoints.length > 60) {
+    const hrRolling = computeRollingAverage(timeline, 'h', 30).map(pt => ({ x: pt.x, y: pt.y }));
+    const hrAnnotations = {};
+    ['fiveMinBox','twentyMinBox','oneKmBox','threeKmBox'].forEach(k => { if (annotations[k]) hrAnnotations[k] = { ...annotations[k] }; });
+
+    const hrCtx = document.getElementById(sportPrefix + '-ftp-hr-timeline-chart').getContext('2d');
+    const newHrChart = new Chart(hrCtx, {
+      type: 'line',
+      data: { datasets: [
+        { label: 'Heart Rate', data: hrPoints, borderColor: 'rgba(239,68,68,0.25)', backgroundColor: 'rgba(239,68,68,0.05)', fill: true, tension: 0, pointRadius: 0, borderWidth: 1, order: 2 },
+        { label: '30s Avg HR', data: hrRolling, borderColor: 'rgba(239,68,68,0.9)', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 0, borderWidth: 2, order: 1 }
+      ]},
+      options: { responsive: true, maintainAspectRatio: false, parsing: false, normalized: true,
+        plugins: { legend: { display: true, position: 'top', labels: { color: '#ccc' } }, annotation: { annotations: hrAnnotations },
+          tooltip: { mode: 'nearest', intersect: false, callbacks: { title: (items) => items.length > 0 ? formatElapsedTime(items[0].parsed.x) : '' } } },
+        scales: {
+          x: { type: 'linear', title: { display: true, text: 'Elapsed Time', font: { weight: 'bold' }, color: '#aaa' }, grid: { color: '#333' }, ticks: { color: '#aaa', maxTicksLimit: 15, callback: v => formatElapsedTime(v) } },
+          y: { title: { display: true, text: 'Heart Rate (bpm)', font: { weight: 'bold' }, color: '#aaa' }, grid: { color: '#333' }, ticks: { color: '#aaa' } }
+        }
+      }
+    });
+    if (sportPrefix === 'bike') bikeHrTimelineChart = newHrChart;
+    else runHrTimelineChart = newHrChart;
+    document.getElementById(sportPrefix + '-ftp-hr-chart-section').hidden = false;
+  } else {
+    document.getElementById(sportPrefix + '-ftp-hr-chart-section').hidden = true;
+  }
+
+  chartSection.hidden = false;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FTP SAVE
+// ═══════════════════════════════════════════════════════════════════
+async function saveFTPTest(athleteName, result, sportPrefix) {
+  if (!athleteName) { showFtpStatus(sportPrefix, 'Athlete name required to save.', 'error'); return; }
+
+  const btn = document.getElementById(sportPrefix + '-ftp-save-btn');
+  const confirm = document.getElementById(sportPrefix + '-ftp-save-confirm');
+  btn.disabled = true;
+  btn.textContent = 'Saving\u2026';
+
+  try {
+    const resp = await fetch('/save_ftp_test', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ athlete_name: athleteName, result }),
+    });
+    const res = await resp.json();
+    if (res.status === 'ok') {
+      btn.textContent = 'Saved';
+      confirm.textContent = `Test saved for ${athleteName}.`;
+      confirm.hidden = false;
+    } else {
+      btn.textContent = 'Save Failed';
+      btn.disabled = false;
+    }
+  } catch (err) {
+    btn.textContent = 'Save Failed';
+    btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FTP HISTORY
+// ═══════════════════════════════════════════════════════════════════
+async function loadFtpHistory(athleteName, sport) {
+  if (!athleteName) return;
+  try {
+    const resp = await fetch(`/ftp_test_history?athlete=${encodeURIComponent(athleteName)}&sport=${sport || ''}`);
+    const data = await resp.json();
+    if (data.status !== 'ok') return;
+    const tests = data.tests || [];
+    const panel = document.getElementById('ftp-history-panel');
+    const table = document.getElementById('ftp-history-table');
+    const empty = document.getElementById('ftp-history-empty');
+    const trendSection = document.getElementById('ftp-trend-section');
+
+    if (tests.length === 0) {
+      empty.hidden = false; table.hidden = true; trendSection.hidden = true; panel.hidden = false; return;
+    }
+
+    empty.hidden = true; table.hidden = false;
+    const isCycling = sport === 'cycling';
+    document.getElementById('ftp-history-thead').innerHTML = isCycling
+      ? '<tr><th>Date</th><th>Ratio</th><th>Profile</th><th>FTP W/kg</th><th>Correction</th><th></th></tr>'
+      : '<tr><th>Date</th><th>Ratio</th><th>Profile</th><th>CS (m/s)</th><th>Threshold Pace</th><th></th></tr>';
+
+    const tbody = document.getElementById('ftp-history-tbody');
+    tbody.innerHTML = tests.map((t, idx) => {
+      const date = (t.test_date || '').slice(0, 10);
+      if (isCycling) {
+        return `<tr><td>${date}</td><td>${t.ratio != null ? t.ratio.toFixed(3) : '--'}</td><td>${t.profile || '--'}</td><td>${t.ftp_wkg != null ? t.ftp_wkg.toFixed(2) : '--'}</td><td>${t.correction_factor != null ? t.correction_factor : '--'}</td><td><button class="history-btn-delete" title="Delete" onclick="deleteFtpTest('${athleteName.replace(/'/g,"\\'")}', ${idx}, '${sport}')">&times;</button></td></tr>`;
+      } else {
+        return `<tr><td>${date}</td><td>${t.ratio != null ? t.ratio.toFixed(3) : '--'}</td><td>${t.profile || '--'}</td><td>${t.estimated_critical_speed != null ? t.estimated_critical_speed : '--'}</td><td>${t.estimated_threshold_pace || '--'}</td><td><button class="history-btn-delete" title="Delete" onclick="deleteFtpTest('${athleteName.replace(/'/g,"\\'")}', ${idx}, '${sport}')">&times;</button></td></tr>`;
+      }
+    }).join('');
+
+    if (tests.length >= 2) { renderFtpTrendChart(tests, isCycling); trendSection.hidden = false; }
+    else { trendSection.hidden = true; }
+    panel.hidden = false;
+  } catch (err) { console.warn('Failed to load FTP history:', err); }
+}
+
+async function deleteFtpTest(athleteName, testIndex, sport) {
+  if (!confirm('Delete this test from history?')) return;
+  try {
+    await fetch('/delete_ftp_test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ athlete_name: athleteName, test_index: testIndex }) });
+    loadFtpHistory(athleteName, sport);
+  } catch (err) { console.warn('Failed to delete test:', err); }
+}
+
+function renderFtpTrendChart(tests, isCycling) {
+  if (ftpTrendChart) { ftpTrendChart.destroy(); ftpTrendChart = null; }
+  const labels = tests.map(t => (t.test_date || '').slice(0, 10));
+  const ratios = tests.map(t => t.ratio);
+  const datasets = [{ label: 'Ratio', data: ratios, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: false, tension: 0.3, pointRadius: 4 }];
+  if (isCycling) {
+    datasets.push({ label: 'FTP W/kg', data: tests.map(t => t.ftp_wkg), borderColor: '#10b981', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 4, yAxisID: 'y1' });
+    datasets.push({ label: 'Correction Factor', data: tests.map(t => t.correction_factor), borderColor: '#f97316', backgroundColor: 'transparent', fill: false, tension: 0.3, pointRadius: 4, borderDash: [4,3] });
+  }
+  const ctx = document.getElementById('ftp-trend-chart').getContext('2d');
+  ftpTrendChart = new Chart(ctx, {
+    type: 'line', data: { labels, datasets },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: '#ccc' } } },
+      scales: { x: { grid: { color: '#333' }, ticks: { color: '#aaa' } },
+        y: { title: { display: true, text: 'Ratio / Correction', color: '#aaa' }, grid: { color: '#333' }, ticks: { color: '#aaa' } },
+        ...(isCycling ? { y1: { position: 'right', title: { display: true, text: 'FTP W/kg', color: '#aaa' }, grid: { drawOnChartArea: false }, ticks: { color: '#aaa' } } } : {})
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// COMBINED REPORT
+// ═══════════════════════════════════════════════════════════════════
+function updateCombinedReport() {
+  const results = [bikeResult, runResult, bikeFTPResult, runFTPResult].filter(Boolean);
+  const section = document.getElementById('combined-report-section');
+  if (results.length < 2) { section.hidden = true; return; }
+
+  section.hidden = false;
+  let rows = '';
+
+  if (bikeResult) {
+    const t = bikeResult.thresholds || {};
+    rows += `<tr><td>Bike DFA Ramp</td><td>${t.hrvt1c_power ? t.hrvt1c_power + ' W' : '\u2014'}</td><td>${t.hrvt2_power ? t.hrvt2_power + ' W' : '\u2014'}</td><td>${t.hrvt1c_hr || '\u2014'}</td><td>${t.hrvt2_hr || '\u2014'}</td></tr>`;
+  }
+  if (runResult) {
+    const t = runResult.thresholds || {};
+    const pd = runResult.pace_data || {};
+    rows += `<tr><td>Run DFA Ramp</td><td>${pd.hrvt1c_pace || '\u2014'}/km</td><td>${pd.hrvt2_pace || '\u2014'}/km</td><td>${t.hrvt1c_hr || '\u2014'}</td><td>${t.hrvt2_hr || '\u2014'}</td></tr>`;
+  }
+  if (bikeFTPResult) {
+    rows += `<tr><td>Bike Power Profile</td><td>\u2014</td><td>${bikeFTPResult.estimated_ftp ? bikeFTPResult.estimated_ftp + ' W' : '\u2014'}</td><td>\u2014</td><td>\u2014</td></tr>`;
+  }
+  if (runFTPResult) {
+    rows += `<tr><td>Run Velocity Profile</td><td>\u2014</td><td>${runFTPResult.estimated_threshold_pace || '\u2014'}/km</td><td>\u2014</td><td>\u2014</td></tr>`;
+  }
+
+  document.getElementById('combined-threshold-table').innerHTML = `
+    <table class="comparison-table"><thead><tr><th>Test</th><th>HRVT1c / LT1</th><th>HRVT2 / FTP / LT2</th><th>HR @ LT1</th><th>HR @ LT2</th></tr></thead><tbody>${rows}</tbody></table>`;
+
+  // Cross-sport HR comparison
+  const bikeHR2 = bikeResult?.thresholds?.hrvt2_hr;
+  const runHR2 = runResult?.thresholds?.hrvt2_hr;
+  const hrTitle = document.getElementById('combined-hr-title');
+  const hrTable = document.getElementById('combined-hr-table');
+  if (bikeHR2 && runHR2) {
+    const bikeHRmax = getHRmax('bike');
+    const runHRmax = getHRmax('run');
+    let hrRows = `<tr><td>HRVT2 HR</td><td>${bikeHR2} bpm${bikeHRmax ? ' (' + ((bikeHR2/bikeHRmax)*100).toFixed(1) + '% max)' : ''}</td><td>${runHR2} bpm${runHRmax ? ' (' + ((runHR2/runHRmax)*100).toFixed(1) + '% max)' : ''}</td></tr>`;
+    const bikeHR1 = bikeResult?.thresholds?.hrvt1c_hr;
+    const runHR1 = runResult?.thresholds?.hrvt1c_hr;
+    if (bikeHR1 && runHR1) {
+      hrRows += `<tr><td>HRVT1c HR</td><td>${bikeHR1} bpm${bikeHRmax ? ' (' + ((bikeHR1/bikeHRmax)*100).toFixed(1) + '% max)' : ''}</td><td>${runHR1} bpm${runHRmax ? ' (' + ((runHR1/runHRmax)*100).toFixed(1) + '% max)' : ''}</td></tr>`;
+    }
+    hrTable.innerHTML = `<table class="comparison-table"><thead><tr><th>Metric</th><th>Bike</th><th>Run</th></tr></thead><tbody>${hrRows}</tbody></table>`;
+    hrTitle.hidden = false; hrTable.hidden = false;
+  } else {
+    hrTitle.hidden = true; hrTable.hidden = true;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RAMP SAVE (Combined)
+// ═══════════════════════════════════════════════════════════════════
+function updateSaveButton() {
+  const hasResults = bikeResult || runResult;
+  document.getElementById('combined-save-section').hidden = !hasResults;
+}
+
+document.getElementById('ramp-save-btn').addEventListener('click', async () => {
+  const name = document.getElementById('ramp-athlete-name').value.trim();
+  if (!name) { showRampStatus('bike', 'Enter athlete name to save.', 'error'); return; }
+
+  const weightKg = getWeightKg();
+  const confirmEl = document.getElementById('ramp-save-confirm');
+  let savedCount = 0;
+  let lastError = null;
+
+  async function saveOne(data) {
+    const payload = { athlete_name: name, result: data };
+    if (weightKg) payload.weight_kg = weightKg;
+    const hrmBike = getHRmax('bike');
+    const hrmRun = getHRmax('run');
+    if (hrmBike) payload.hrmax_bike = hrmBike;
+    if (hrmRun) payload.hrmax_run = hrmRun;
+    const paceStr = document.getElementById('run-threshold-pace').value.trim();
+    if (paceStr) payload.threshold_pace = paceStr;
+    const resp = await fetch('/save_ramp_test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const result = await resp.json();
+    if (result.status === 'ok') savedCount++;
+    else lastError = result.message || 'Save failed.';
+  }
+
+  try {
+    if (bikeResult) await saveOne(bikeResult);
+    if (runResult) await saveOne(runResult);
+    if (savedCount > 0) {
+      confirmEl.textContent = savedCount === 2 ? 'Both saved!' : 'Saved!';
+      confirmEl.hidden = false;
+      loadHistory(name);
+      loadAllTests();
+      fetch('/athlete_list').then(r => r.json()).then(d => { if (d.status === 'ok') athleteList = d.athletes || []; }).catch(() => {});
+      setTimeout(() => confirmEl.hidden = true, 3000);
+    }
+    if (lastError) showRampStatus('bike', lastError, 'error');
+  } catch (err) {
+    showRampStatus('bike', 'Save error: ' + err.message, 'error');
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// RAMP HISTORY
+// ═══════════════════════════════════════════════════════════════════
+async function loadHistory(athleteName) {
+  try {
+    const resp = await fetch(`/ramp_test_history?athlete=${encodeURIComponent(athleteName)}`);
+    const data = await resp.json();
+    if (data.status !== 'ok') return;
+
+    const panel = document.getElementById('ramp-history-panel');
+    panel.hidden = false;
+    const tbody = document.getElementById('ramp-history-tbody');
+    const tests = data.tests || [];
+
+    if (!tests.length) { tbody.innerHTML = ''; document.getElementById('ramp-history-empty').hidden = false; return; }
+
+    document.getElementById('ramp-history-empty').hidden = true;
+    window._historyTests = tests;
+    window._historyAthlete = athleteName;
+
+    tbody.innerHTML = tests.map((t, i) => {
+      const sport = t.protocol_type || 'bike';
+      const sportLabel = sport === 'run' ? 'Run' : 'Bike';
+      const primaryValue = sport === 'run' ? (t.hrvt2_pace || t.hrvt2_power || '\u2014') : (t.hrvt2_power ? t.hrvt2_power + 'W' : '\u2014');
+      const hrvt1cValue = sport === 'run' ? (t.hrvt1c_pace || t.hrvt1c_power || '\u2014') : (t.hrvt1c_power ? t.hrvt1c_power + 'W' : '\u2014');
+      return `<tr class="history-row-clickable" onclick="viewHistoryTest(${i})" title="Click to view results">
+        <td>${t.test_date ? t.test_date.split('T')[0] : '\u2014'}</td><td>${sportLabel}</td><td>${primaryValue}</td><td>${hrvt1cValue}</td>
+        <td>${t.archetype || '\u2014'}</td><td>${t.regression_r2_power ? t.regression_r2_power.toFixed(3) : '\u2014'}</td><td>${t.data_quality || '\u2014'}</td>
+        <td><button class="history-btn-delete" onclick="event.stopPropagation();deleteRampTest('${athleteName}',${i})">Delete</button></td></tr>`;
+    }).join('');
+
+    if (tests.length >= 2) renderTrendChart(tests);
+  } catch (err) { /* silent */ }
+}
+
+async function deleteRampTest(athleteName, index) {
+  if (!confirm('Delete this test?')) return;
+  try {
+    await fetch('/delete_ramp_test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ athlete_name: athleteName, test_index: index }) });
+    loadHistory(athleteName);
+    loadAllTests();
+  } catch (err) { /* silent */ }
+}
+
+function viewHistoryTest(index) {
+  const tests = window._historyTests;
+  if (!tests || !tests[index]) return;
+  const t = tests[index];
+  const sport = t.protocol_type || 'bike';
+  const pfx = sport + '-';
+  const isRun = sport === 'run';
+  const hrmax = getHRmax(sport);
+  const weightKg = getWeightKg();
+
+  const thr = { hrvt1s_power: t.hrvt1s_power, hrvt1s_hr: t.hrvt1s_hr, hrvt1c_power: t.hrvt1c_power, hrvt1c_hr: t.hrvt1c_hr, hrvt2_power: t.hrvt2_power, hrvt2_hr: t.hrvt2_hr, hrvt2_extrapolated: t.hrvt2_extrapolated, a1_star: t.a1_star };
+  const paceData = isRun ? { hrvt1s_pace: t.hrvt1s_pace, hrvt1c_pace: t.hrvt1c_pace, hrvt2_pace: t.hrvt2_pace } : null;
+
+  document.getElementById(sport + '-results-section').hidden = false;
+  const title = document.getElementById(pfx + 'results-title');
+  const dateStr = t.test_date ? t.test_date.split('T')[0] : '';
+  title.textContent = (isRun ? 'Run' : 'Bike') + ' Ramp Test \u2014 ' + dateStr;
+
+  const row = document.getElementById(pfx + 'meta-row');
+  const chips = [];
+  if (t.stages_completed) chips.push(`<span class="meta-chip">Stages: <strong>${t.stages_completed} / 10</strong></span>`);
+  if (t.ramp_status) chips.push(`<span class="meta-chip">Ramp: <strong style="color:${statusColor(t.ramp_status)}">${t.ramp_status}</strong></span>`);
+  if (t.effort_status) chips.push(`<span class="meta-chip">Effort: <strong style="color:${statusColor(t.effort_status)}">${t.effort_status}</strong></span>`);
+  if (t.regression_r2_power) chips.push(`<span class="meta-chip">R&sup2;: <strong>${t.regression_r2_power.toFixed(3)}</strong></span>`);
+  if (t.data_quality) chips.push(`<span class="meta-chip">Quality: <strong>${t.data_quality}</strong></span>`);
+  row.innerHTML = chips.join('');
+
+  renderThresholds(thr, { r2: t.regression_r2_power }, {}, hrmax, weightKg, paceData, pfx);
+
+  const arch = { archetype: t.archetype, afu: t.afu, anfu: t.anfu, tsr: t.tsr, atpr: t.atpr };
+  if (t.archetype) {
+    document.getElementById(pfx + 'profile-section-title').hidden = false;
+    document.getElementById(pfx + 'profile-grid').hidden = false;
+    document.getElementById(pfx + 'archetype-label').textContent = t.archetype;
+    document.getElementById(pfx + 'archetype-confidence').textContent = '';
+    document.getElementById(pfx + 'ceiling-flag').style.display = 'none';
+    document.getElementById(pfx + 'dev-level-card').hidden = true;
+    document.getElementById(pfx + '3min-power-card').hidden = true;
+    document.getElementById(pfx + 'sw-grid').hidden = true;
+    document.getElementById(pfx + 'training-rec-card').hidden = true;
+    document.getElementById(pfx + 'profile-warnings-card').hidden = true;
+    renderAdvancedArchetype(arch, pfx);
+  }
+
+  const chartsDetails = document.getElementById(sport + '-results-section').querySelectorAll('details.charts-details');
+  chartsDetails.forEach(d => d.hidden = true);
+  document.getElementById(pfx + 'warnings-bar').hidden = true;
+  document.getElementById(sport + '-results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderTrendChart(tests) {
+  if (trendChart) trendChart.destroy();
+  const ctx = document.getElementById('ramp-trend-chart').getContext('2d');
+  const labels = tests.map(t => t.test_date ? t.test_date.split('T')[0] : '?');
+  const ftpData = tests.map(t => t.hrvt2_power);
+  const hrvt1cData = tests.map(t => t.hrvt1c_power);
+  const th = chartTheme();
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [
+      { label: 'HRVT2 / FTP (W)', data: ftpData, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.3 },
+      { label: 'HRVT1c (W)', data: hrvt1cData, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.3 },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: th.legend } } },
+      scales: { x: { ticks: { color: th.tick }, grid: { color: th.grid } }, y: { title: { display: true, text: 'Power (W)', color: th.axisLabel }, ticks: { color: th.tick }, grid: { color: th.grid } } }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ALL TESTS BOTTOM PANEL
+// ═══════════════════════════════════════════════════════════════════
+let _allTests = [];
+let _allTestsSortCol = 'test_date';
+let _allTestsSortAsc = false;
+
+function toggleAllTestsPanel() {
+  const panel = document.getElementById('all-tests-panel');
+  const arrow = document.getElementById('all-tests-arrow');
+  if (panel.hidden) { panel.hidden = false; arrow.innerHTML = '&#9660;'; loadAllTests(); }
+  else { panel.hidden = true; arrow.innerHTML = '&#9650;'; }
+}
+
+async function loadAllTests() {
+  try {
+    const resp = await fetch('/all_ramp_tests');
+    const data = await resp.json();
+    if (data.status === 'ok') { _allTests = data.tests || []; populateAthleteFilter(); renderAllTestsTable(); }
+  } catch (e) { console.error('Failed to load all tests:', e); }
+}
+
+function populateAthleteFilter() {
+  const sel = document.getElementById('all-tests-athlete-filter');
+  const current = sel.value;
+  const athletes = [...new Set(_allTests.map(t => t.athlete))].sort();
+  sel.innerHTML = '<option value="">All Athletes</option>';
+  athletes.forEach(a => { const opt = document.createElement('option'); opt.value = a; opt.textContent = a; sel.appendChild(opt); });
+  sel.value = current;
+}
+
+function getFilteredTests() {
+  const athlete = document.getElementById('all-tests-athlete-filter').value;
+  const sport = document.getElementById('all-tests-sport-filter').value;
+  let tests = _allTests;
+  if (athlete) tests = tests.filter(t => t.athlete === athlete);
+  if (sport) tests = tests.filter(t => t.protocol_type === sport);
+  return tests;
+}
+
+function filterAllTests() { renderAllTestsTable(); }
+
+function sortAllTests(col) {
+  if (_allTestsSortCol === col) _allTestsSortAsc = !_allTestsSortAsc;
+  else { _allTestsSortCol = col; _allTestsSortAsc = true; }
+  renderAllTestsTable();
+}
+
+function renderAllTestsTable() {
+  let tests = getFilteredTests();
+  const col = _allTestsSortCol;
+  const asc = _allTestsSortAsc;
+  tests = [...tests].sort((a, b) => {
+    let va = a[col], vb = b[col];
+    if (va == null) va = ''; if (vb == null) vb = '';
+    if (typeof va === 'number' && typeof vb === 'number') return asc ? va - vb : vb - va;
+    va = String(va).toLowerCase(); vb = String(vb).toLowerCase();
+    return asc ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+
+  document.querySelectorAll('.all-tests-table th span[id^="sort-"]').forEach(s => s.textContent = '');
+  const ind = document.getElementById('sort-' + col);
+  if (ind) ind.textContent = asc ? ' \u25B2' : ' \u25BC';
+
+  document.getElementById('all-tests-count').textContent = tests.length + ' test' + (tests.length !== 1 ? 's' : '');
+
+  const tbody = document.getElementById('all-tests-tbody');
+  const empty = document.getElementById('all-tests-empty');
+
+  if (tests.length === 0) { tbody.innerHTML = ''; empty.hidden = false; return; }
+  empty.hidden = true;
+
+  const fmtVal = (v, suffix) => v != null ? (typeof v === 'number' ? v.toFixed(suffix === 'W' ? 0 : suffix === '' ? 2 : 1) + (suffix ? ' ' + suffix : '') : v) : '\u2014';
+  const fmtDate = d => d ? d.split('T')[0] : '\u2014';
+  const sportLabel = s => s === 'run' ? 'Run' : 'Bike';
+  const qualLabel = q => {
+    if (!q) return '\u2014';
+    const cls = q === 'excellent' ? 'qual-excellent' : q === 'good' ? 'qual-good' : q === 'acceptable' ? 'qual-acceptable' : 'qual-poor';
+    return '<span class="' + cls + '">' + q.charAt(0).toUpperCase() + q.slice(1) + '</span>';
+  };
+
+  tbody.innerHTML = tests.map(t =>
+    '<tr><td>' + (t.athlete || '\u2014') + '</td><td>' + fmtDate(t.test_date) + '</td><td>' + sportLabel(t.protocol_type) + '</td><td>' + fmtVal(t.hrvt1c_power, 'W') + '</td><td>' + fmtVal(t.hrvt2_power, 'W') + '</td><td>' + (t.archetype || '\u2014') + '</td><td>' + (t.atpr != null ? t.atpr.toFixed(2) : '\u2014') + '</td><td>' + (t.regression_r2_power != null ? t.regression_r2_power.toFixed(3) : '\u2014') + '</td><td>' + qualLabel(t.data_quality) + '</td></tr>'
+  ).join('');
+}
+
+// Auto-load all tests on page load
+document.addEventListener('DOMContentLoaded', () => { loadAllTests(); });
+
+// ═══════════════════════════════════════════════════════════════════
+// PDF EXPORT
+// ═══════════════════════════════════════════════════════════════════
+let _exportSport = null;
+
+function openExportModal(sport) {
+  _exportSport = sport;
+  document.getElementById('export-comments').value = '';
+  document.getElementById('export-include-comparison').checked = true;
+  const modal = document.getElementById('export-modal');
+  modal.hidden = false;
+  modal.classList.add('visible');
+}
+
+function closeExportModal() {
+  const modal = document.getElementById('export-modal');
+  modal.classList.remove('visible');
+  modal.hidden = true;
+  _exportSport = null;
+}
+
+// Close modal on backdrop click or Escape key
+document.getElementById('export-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeExportModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && document.getElementById('export-modal').classList.contains('visible')) closeExportModal();
+});
+
+async function generateReport() {
+  if (!_exportSport) return;
+  const result = _exportSport === 'bike' ? bikeResult : runResult;
+  if (!result) { alert('No analysis result to export.'); return; }
+
+  const btn = document.getElementById('export-generate-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+
+  const comments = document.getElementById('export-comments').value;
+  const includeComparison = document.getElementById('export-include-comparison').checked;
+
+  // Find previous test from history
+  let previousTest = null;
+  if (includeComparison && window._historyTests && window._historyTests.length > 0) {
+    // Find most recent test of same sport that isn't the current one
+    const sport = _exportSport === 'bike' ? 'bike' : 'run';
+    const candidates = window._historyTests.filter(t =>
+      (t.protocol_type || 'bike') === sport
+    );
+    if (candidates.length > 0) {
+      previousTest = candidates[0]; // most recent (sorted by date desc)
+    }
+  }
+
+  const athleteName = document.getElementById('ramp-athlete-name').value.trim() || 'Athlete';
+  const weightKg = getWeightKg();
+  const hrmax = getHRmax(_exportSport === 'run' ? 'run' : 'bike');
+
+  try {
+    const resp = await fetch('/generate_report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        result: result,
+        athlete_name: athleteName,
+        sport: _exportSport,
+        comments: comments,
+        previous_test: previousTest,
+        weight_kg: weightKg,
+        hrmax: hrmax,
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      alert('Report failed: ' + (err.message || 'Unknown error'));
+      return;
+    }
+
+    // Download the PDF
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = resp.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') ||
+                 `${athleteName.replace(/\s+/g, '_')}_report.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    closeExportModal();
+  } catch (err) {
+    alert('Export error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Generate Report';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// THRESHOLD INTERVAL PRESCRIPTION
+// ═══════════════════════════════════════════════════════════════════
+
+const PRESCRIPTION_DATA = {
+  cycling: {
+    interval: {
+      'High Anaerobic': { range: '5–6 min', min: 5, max: 6 },
+      'Balanced':       { range: '6–8 min', min: 6, max: 8 },
+      'High Aerobic':   { range: '8–10 min', min: 8, max: 10 },
+    },
+    volume: {
+      'Beginner':     { range: '20–25 min', min: 20, max: 25 },
+      'Intermediate': { range: '30–40 min', min: 30, max: 40 },
+      'Advanced':     { range: '45–55 min', min: 45, max: 55 },
+      'Elite':        { range: '60–75 min', min: 60, max: 75 },
+    },
+    volumeUnit: 'min',
+    recoveryType: 'easy spin',
+  },
+  running: {
+    interval: {
+      'High Anaerobic': { range: '800m–1000m', min: 800, max: 1000 },
+      'Balanced':       { range: '1200m–1600m', min: 1200, max: 1600 },
+      'High Aerobic':   { range: '1600m–2000m', min: 1600, max: 2000 },
+    },
+    volume: {
+      'Beginner':     { range: '3–4 km', min: 3000, max: 4000 },
+      'Intermediate': { range: '5–7 km', min: 5000, max: 7000 },
+      'Advanced':     { range: '8–10 km', min: 8000, max: 10000 },
+      'Elite':        { range: '12–14 km', min: 12000, max: 14000 },
+    },
+    volumeUnit: 'km',
+    recoveryType: 'standing',
+  },
+};
+
+const RECOVERY_DURATION = {
+  'Beginner': '2:00',
+  'Intermediate': '1:30',
+  'Advanced': '1:00',
+  'Elite': '1:00',
+};
+
+const BLOCK_LENGTH = {
+  'Beginner':     { total: 6, training: 4, test: 1, adaptation: 1 },
+  'Intermediate': { total: 7, training: 5, test: 1, adaptation: 1 },
+  'Advanced':     { total: 8, training: 6, test: 1, adaptation: 1 },
+  'Elite':        { total: 8, training: 6, test: 1, adaptation: 1 },
+};
+
+const HRVT1_PCT_OF_FTP = {
+  'High Aerobic':   { lo: 0.78, hi: 0.82 },
+  'Balanced':       { lo: 0.72, hi: 0.77 },
+  'High Anaerobic': { lo: 0.65, hi: 0.72 },
+};
+
+/**
+ * Generate threshold interval prescription from profile + level + intensity data.
+ *
+ * @param {string} sport       - 'cycling' or 'running'
+ * @param {string} profile     - 'High Aerobic' | 'Balanced' | 'High Anaerobic'
+ * @param {string} level       - 'Beginner' | 'Intermediate' | 'Advanced' | 'Elite'
+ * @param {object} intensity   - { power, hr, pace, source }
+ *   source: 'ramp' or 'field'
+ *   power: HRVT2 watts (cycling) or null
+ *   hr: HRVT2 HR (only from ramp) or null
+ *   pace: threshold pace string (running) or null
+ *   ftp: estimated FTP (field test cycling) or null
+ *   criticalSpeed: estimated CS m/s (field test running) or null
+ */
+function generatePrescription(sport, profile, level, intensity) {
+  const data = PRESCRIPTION_DATA[sport];
+  if (!data || !data.interval[profile] || !data.volume[level]) return null;
+
+  const interval = data.interval[profile];
+  let volume = data.volume[level];
+  const recovery = RECOVERY_DURATION[level];
+  const block = BLOCK_LENGTH[level];
+  const notes = [];
+
+  // Beginner + High Aerobic + running: drop interval to Balanced range
+  let effectiveInterval = interval;
+  if (sport === 'running' && level === 'Beginner' && profile === 'High Aerobic') {
+    effectiveInterval = data.interval['Balanced'];
+    notes.push('Interval length reduced to maintain minimum 3-rep session structure. Progress to profile interval length (1600m–2000m) at Intermediate level.');
+  }
+
+  // Minimum 3 reps check
+  if (sport === 'cycling') {
+    const minReps = Math.floor(volume.min / effectiveInterval.max);
+    if (minReps < 3) {
+      // Drop to next shorter interval tier
+      const tiers = ['High Aerobic', 'Balanced', 'High Anaerobic'];
+      const currentIdx = tiers.indexOf(profile);
+      if (currentIdx < tiers.length - 1) {
+        effectiveInterval = data.interval[tiers[currentIdx + 1]];
+        notes.push(`Interval length reduced to ${effectiveInterval.range} to maintain minimum 3-rep session structure.`);
+      }
+    }
+  } else {
+    const minReps = Math.floor(volume.min / effectiveInterval.max);
+    if (minReps < 3 && !(level === 'Beginner' && profile === 'High Aerobic')) {
+      const tiers = ['High Aerobic', 'Balanced', 'High Anaerobic'];
+      const currentIdx = tiers.indexOf(profile);
+      if (currentIdx < tiers.length - 1) {
+        effectiveInterval = data.interval[tiers[currentIdx + 1]];
+        notes.push(`Interval length reduced to ${effectiveInterval.range} to maintain minimum 3-rep session structure.`);
+      }
+    }
+  }
+
+  // Intensity target
+  let intensityLabel = '';
+  let hrCapLabel = '';
+  if (sport === 'cycling') {
+    if (intensity.source === 'ramp' && intensity.power) {
+      intensityLabel = `${Math.round(intensity.power)}W`;
+    } else if (intensity.ftp) {
+      intensityLabel = `${Math.round(intensity.ftp)}W (FTP)`;
+    }
+    if (intensity.source === 'ramp' && intensity.hr) {
+      hrCapLabel = `${Math.round(intensity.hr)} bpm`;
+    }
+  } else {
+    if (intensity.source === 'ramp' && intensity.pace) {
+      intensityLabel = `${intensity.pace}/km`;
+    } else if (intensity.criticalSpeed) {
+      const paceSec = 1000.0 / intensity.criticalSpeed;
+      const m = Math.floor(paceSec / 60);
+      const s = Math.round(paceSec % 60);
+      intensityLabel = `${m}:${String(s).padStart(2, '0')}/km (CS)`;
+    }
+    if (intensity.source === 'ramp' && intensity.hr) {
+      hrCapLabel = `${Math.round(intensity.hr)} bpm`;
+    }
+  }
+
+  if (intensity.source === 'field' && !hrCapLabel) {
+    notes.push('HR cap not available from field test. Consider DFA \u03b11 ramp test for HR-based thresholds.');
+  }
+
+  // Zone 1 ceiling estimate (field test only — ramp tests measure HRVT1 directly)
+  let zone1CeilingLabel = '';
+  if (intensity.source === 'field' && sport === 'cycling' && intensity.ftp) {
+    const pctRange = HRVT1_PCT_OF_FTP[profile];
+    if (pctRange) {
+      const lo = Math.round(intensity.ftp * pctRange.lo);
+      const hi = Math.round(intensity.ftp * pctRange.hi);
+      zone1CeilingLabel = `${lo}–${hi}W`;
+    }
+  } else if (intensity.source === 'field' && sport === 'running' && intensity.criticalSpeed) {
+    const pctRange = HRVT1_PCT_OF_FTP[profile];
+    if (pctRange) {
+      const loSpeed = intensity.criticalSpeed * pctRange.lo;
+      const hiSpeed = intensity.criticalSpeed * pctRange.hi;
+      const loPace = 1000.0 / hiSpeed;  // faster speed = lower pace
+      const hiPace = 1000.0 / loSpeed;
+      const fmtP = (s) => { const m = Math.floor(s / 60); const sec = Math.round(s % 60); return `${m}:${String(sec).padStart(2, '0')}`; };
+      zone1CeilingLabel = `${fmtP(loPace)}–${fmtP(hiPace)}/km`;
+    }
+  }
+
+  return {
+    sport,
+    profile,
+    level,
+    intervalRange: effectiveInterval.range,
+    volumeRange: volume.range,
+    volumeUnit: data.volumeUnit,
+    recovery: recovery,
+    recoveryType: data.recoveryType,
+    intensityLabel,
+    hrCapLabel,
+    zone1CeilingLabel,
+    block,
+    notes,
+  };
+}
+
+/**
+ * Render prescription into a target DOM container.
+ */
+function renderPrescription(gridId, notesId, prescription) {
+  const grid = document.getElementById(gridId);
+  const notesDiv = document.getElementById(notesId);
+  if (!grid || !prescription) return;
+
+  const sportLabel = prescription.sport === 'cycling' ? 'Cycling' : 'Running';
+
+  let html = `
+    <div class="prescription-card">
+      <div class="prescription-card-header">Interval Length</div>
+      <div class="prescription-card-value">${prescription.intervalRange}</div>
+      <div class="prescription-card-detail">Based on ${prescription.profile} profile</div>
+    </div>
+    <div class="prescription-card">
+      <div class="prescription-card-header">Total Volume</div>
+      <div class="prescription-card-value">${prescription.volumeRange}</div>
+      <div class="prescription-card-detail">Per session at threshold</div>
+    </div>
+    <div class="prescription-card">
+      <div class="prescription-card-header">Recovery</div>
+      <div class="prescription-card-value">${prescription.recovery}</div>
+      <div class="prescription-card-detail">${prescription.recoveryType}</div>
+    </div>
+    <div class="prescription-card">
+      <div class="prescription-card-header">Intensity</div>
+      <div class="prescription-card-value">${prescription.intensityLabel || '\u2014'}</div>
+      <div class="prescription-card-detail">${prescription.hrCapLabel ? 'HR cap: ' + prescription.hrCapLabel : (prescription.intensityLabel ? '' : 'No intensity data')}</div>
+    </div>
+    <div class="prescription-card">
+      <div class="prescription-card-header">Training Block</div>
+      <div class="prescription-card-value">${prescription.block.total} weeks</div>
+      <div class="prescription-card-detail">${prescription.block.training}wk train + ${prescription.block.test}wk test + ${prescription.block.adaptation}wk adapt</div>
+    </div>
+    <div class="prescription-card">
+      <div class="prescription-card-header">Athlete Level</div>
+      <div class="prescription-card-value">${prescription.level}</div>
+      <div class="prescription-card-detail">${prescription.profile}</div>
+    </div>`;
+
+  // Zone 1 ceiling card (field test only)
+  if (prescription.zone1CeilingLabel) {
+    html += `
+    <div class="prescription-card prescription-card-estimate">
+      <div class="prescription-card-header">Zone 1 Ceiling (est.)</div>
+      <div class="prescription-card-value">${prescription.zone1CeilingLabel}</div>
+      <div class="prescription-card-detail">Estimated from ${prescription.sport === 'cycling' ? 'FTP' : 'critical speed'}</div>
+    </div>`;
+  }
+
+  grid.innerHTML = html;
+
+  if (notesDiv) {
+    if (prescription.notes.length) {
+      notesDiv.innerHTML = prescription.notes.map(n => `<p class="prescription-note">\u26A0 ${n}</p>`).join('');
+    } else {
+      notesDiv.innerHTML = '';
+    }
+  }
+}
+
+/**
+ * Normalise archetype string — strip suffixes like " (Threshold Ratios Only)".
+ */
+function normaliseProfile(raw) {
+  if (!raw) return null;
+  for (const p of ['High Aerobic', 'Balanced', 'High Anaerobic']) {
+    if (raw.startsWith(p)) return p;
+  }
+  return null;
+}
+
+/**
+ * Infer profile from ATPR when archetype classification is unavailable.
+ */
+function profileFromATPR(atpr) {
+  if (atpr == null) return null;
+  if (atpr > 0.85) return 'High Aerobic';
+  if (atpr >= 0.75) return 'Balanced';
+  return 'High Anaerobic';
+}
+
+/**
+ * Infer level from ATPR when development_level is unavailable.
+ */
+function levelFromATPR(atpr) {
+  if (atpr == null) return 'Intermediate';
+  if (atpr > 0.85) return 'Elite';
+  if (atpr >= 0.80) return 'Advanced';
+  if (atpr >= 0.75) return 'Intermediate';
+  return 'Beginner';
+}
+
+/**
+ * Show prescription for a DFA ramp test result.
+ */
+function showRampPrescription(result, sport, prefix) {
+  if (!result) return;
+  const arch = result.archetype || {};
+  const dev = arch.development_level;
+  const thr = result.thresholds || {};
+
+  // Try archetype first, fall back to ATPR-based inference
+  let profile = normaliseProfile(arch.archetype);
+  let level = dev ? dev.level : null;
+
+  // If archetype unavailable, infer from ATPR
+  const atpr = thr.atpr || arch.atpr;
+  if (!profile) profile = profileFromATPR(atpr);
+  if (!level) level = levelFromATPR(atpr);
+  if (!profile) return;
+
+  const isCycling = (sport === 'bike');
+  const intensity = {
+    source: 'ramp',
+    power: isCycling ? thr.hrvt2_power : null,
+    hr: thr.hrvt2_hr || null,
+    pace: null,
+    ftp: null,
+    criticalSpeed: null,
+  };
+
+  // For running, derive pace from speed
+  if (!isCycling && thr.hrvt2_power) {
+    const paceSec = 1000.0 / thr.hrvt2_power;
+    const m = Math.floor(paceSec / 60);
+    const s = Math.round(paceSec % 60);
+    intensity.pace = `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  const rx = generatePrescription(isCycling ? 'cycling' : 'running', profile, level, intensity);
+  if (!rx) return;
+
+  const section = document.getElementById(prefix + '-ramp-prescription');
+  if (section) {
+    section.hidden = false;
+    renderPrescription(prefix + '-ramp-prescription-grid', prefix + '-ramp-prescription-notes', rx);
+  }
+}
+
+/**
+ * Show prescription for a field test (FTP / velocity profile) result.
+ * Field tests provide profile but not level — level must be inferred or set.
+ * For now, we use a simple heuristic based on threshold values,
+ * or default to 'Intermediate' if we can't determine.
+ */
+function showFieldTestPrescription(result, sport, prefix) {
+  if (!result) return;
+  const profile = result.profile;
+  if (!profile) return;
+
+  // Field tests don't compute development level — we need to estimate or ask.
+  // Use a simple FTP-based heuristic for cycling, speed-based for running.
+  let level = 'Intermediate';  // safe default
+
+  const isCycling = (sport === 'bike');
+  const wkg = result.ftp_wkg;
+  if (isCycling && wkg) {
+    if (wkg >= 5.0) level = 'Elite';
+    else if (wkg >= 4.0) level = 'Advanced';
+    else if (wkg >= 3.0) level = 'Intermediate';
+    else level = 'Beginner';
+  } else if (!isCycling && result.estimated_critical_speed) {
+    const cs = result.estimated_critical_speed;
+    // Speed thresholds (m/s): roughly elite > 4.5, advanced > 3.8, intermediate > 3.2
+    if (cs >= 4.5) level = 'Elite';
+    else if (cs >= 3.8) level = 'Advanced';
+    else if (cs >= 3.2) level = 'Intermediate';
+    else level = 'Beginner';
+  }
+
+  const intensity = {
+    source: 'field',
+    power: null,
+    hr: null,
+    pace: null,
+    ftp: isCycling ? result.estimated_ftp : null,
+    criticalSpeed: !isCycling ? result.estimated_critical_speed : null,
+  };
+
+  const rx = generatePrescription(isCycling ? 'cycling' : 'running', profile, level, intensity);
+  if (!rx) return;
+
+  const section = document.getElementById(prefix + '-ftp-prescription');
+  if (section) {
+    section.hidden = false;
+    renderPrescription(prefix + '-ftp-prescription-grid', prefix + '-ftp-prescription-notes', rx);
+  }
+}
+</script>
+
+</body>
+</html>

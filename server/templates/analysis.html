@@ -1284,7 +1284,6 @@ function renderThresholds(thr, regP, regH, hrmax, weight, paceData, pfx, fullDat
   const artRamp = dq.artifact_rate_ramp || 0;
   const warmupStable = dq.warmup_stable !== false;
   const rampMonotonic = dq.ramp_monotonic !== false;
-  const hrvSource = (fullData && fullData.hrv_source) || 'hrv';
 
   // Compute quality multiplier (1.0 = perfect data, higher = worse)
   function qualityMultiplier(isHrvt2) {

@@ -86,6 +86,8 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        # Add columns that create_all() won't add to existing tables
+        _migrate_add_columns(app)
         _ensure_coach_account(app)
 
     # -----------------------------------------------------------------------
@@ -473,7 +475,10 @@ def create_app():
         athlete_id = request.args.get('athlete_id')
         query = TestSession.query
         if athlete_id:
-            query = query.filter_by(athlete_id=int(athlete_id))
+            try:
+                query = query.filter_by(athlete_id=int(athlete_id))
+            except (ValueError, TypeError):
+                return jsonify({'status': 'error', 'message': 'Invalid athlete_id.'}), 400
         sessions = query.order_by(TestSession.test_date.desc()).all()
 
         results = []
@@ -962,8 +967,11 @@ def create_app():
         fit_hex = test.get('fit_file_data')
         if not fit_hex:
             return jsonify({'status': 'error', 'message': 'No FIT file stored for this test.'}), 404
-        fit_compressed = bytes.fromhex(fit_hex)
-        fit_bytes = gzip.decompress(fit_compressed)
+        try:
+            fit_compressed = bytes.fromhex(fit_hex)
+            fit_bytes = gzip.decompress(fit_compressed)
+        except Exception:
+            return jsonify({'status': 'error', 'message': 'Stored FIT file is corrupt.'}), 400
         filename = test.get('fit_file_name', f'{athlete_name}_ramp.fit')
         if not filename.lower().endswith('.fit'):
             filename = filename + '.fit'
@@ -983,8 +991,11 @@ def create_app():
         fit_hex = test.get('fit_file_data')
         if not fit_hex:
             return jsonify({'status': 'error', 'message': 'No FIT file stored for this test.'}), 404
-        fit_compressed = bytes.fromhex(fit_hex)
-        file_bytes = gzip.decompress(fit_compressed)
+        try:
+            fit_compressed = bytes.fromhex(fit_hex)
+            file_bytes = gzip.decompress(fit_compressed)
+        except Exception:
+            return jsonify({'status': 'error', 'message': 'Stored FIT file is corrupt.'}), 400
 
         protocol_type = test.get('protocol_type', 'bike')
         threshold_pace_sec = _float_or_none(test.get('threshold_pace_sec'))
@@ -1287,6 +1298,29 @@ def create_app():
         return jsonify({'status': 'ok'})
 
     return app
+
+
+# ---------------------------------------------------------------------------
+# DATABASE MIGRATION — add columns that create_all() won't add to existing tables
+# ---------------------------------------------------------------------------
+
+def _migrate_add_columns(app):
+    """Safely add new columns to existing tables (idempotent)."""
+    from sqlalchemy import text, inspect
+    insp = inspect(db.engine)
+
+    # TestSession: fit_file_name, fit_file_data
+    if 'test_sessions' in insp.get_table_names():
+        existing = {c['name'] for c in insp.get_columns('test_sessions')}
+        with db.engine.begin() as conn:
+            if 'fit_file_name' not in existing:
+                conn.execute(text('ALTER TABLE test_sessions ADD COLUMN fit_file_name VARCHAR(255)'))
+                print('[MIGRATE] Added fit_file_name to test_sessions')
+            if 'fit_file_data' not in existing:
+                # Use BLOB for SQLite, BYTEA for PostgreSQL
+                col_type = 'BYTEA' if 'postgresql' in str(db.engine.url) else 'BLOB'
+                conn.execute(text(f'ALTER TABLE test_sessions ADD COLUMN fit_file_data {col_type}'))
+                print('[MIGRATE] Added fit_file_data to test_sessions')
 
 
 # ---------------------------------------------------------------------------

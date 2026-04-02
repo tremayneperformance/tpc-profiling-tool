@@ -20,7 +20,7 @@
       <a href="/analysis" class="active">Analysis</a>
       <a href="/admin">Data</a>
     </div>
-    <button id="nav-logout" class="top-nav-logout" onclick="localStorage.removeItem('auth_token');window.location='/';">Logout</button>
+    <button class="top-nav-logout" onclick="localStorage.removeItem('auth_token');localStorage.removeItem('auth_user');window.location='/';">Logout</button>
   </div>
 </nav>
 
@@ -2576,10 +2576,14 @@ async function loadHistory(athleteName) {
       const sportLabel = sport === 'run' ? 'Run' : 'Bike';
       const primaryValue = sport === 'run' ? (t.hrvt2_pace || t.hrvt2_power || '\u2014') : (t.hrvt2_power ? t.hrvt2_power + 'W' : '\u2014');
       const hrvt1cValue = sport === 'run' ? (t.hrvt1c_pace || t.hrvt1c_power || '\u2014') : (t.hrvt1c_power ? t.hrvt1c_power + 'W' : '\u2014');
+      const hasFit = !!t.has_fit_file;
+      const reBtn = hasFit
+        ? `<button class="history-btn-reanalyze" onclick="event.stopPropagation();reanalyzeTest('${athleteName}',${i})" title="Re-run full analysis from stored FIT file">Re-analyse</button>`
+        : '';
       return `<tr class="history-row-clickable" onclick="viewHistoryTest(${i})" title="Click to view results">
         <td>${t.test_date ? t.test_date.split('T')[0] : '\u2014'}</td><td>${sportLabel}</td><td>${primaryValue}</td><td>${hrvt1cValue}</td>
         <td>${t.archetype || '\u2014'}</td><td>${t.regression_r2_power ? t.regression_r2_power.toFixed(3) : '\u2014'}</td><td>${t.data_quality || '\u2014'}</td>
-        <td><button class="history-btn-delete" onclick="event.stopPropagation();deleteRampTest('${athleteName}',${i})">Delete</button></td></tr>`;
+        <td>${reBtn}<button class="history-btn-delete" onclick="event.stopPropagation();deleteRampTest('${athleteName}',${i})">Delete</button></td></tr>`;
     }).join('');
 
     if (tests.length >= 2) renderTrendChart(tests);
@@ -2593,6 +2597,32 @@ async function deleteRampTest(athleteName, index) {
     loadHistory(athleteName);
     loadAllTests();
   } catch (err) { /* silent */ }
+}
+
+async function reanalyzeTest(athleteName, index) {
+  try {
+    const resp = await authFetch(`/api/admin/reanalyze/${encodeURIComponent(athleteName)}/${index}`, { method: 'POST' });
+    const data = await resp.json();
+    if (data.status !== 'ok' && data.status !== undefined) {
+      alert(data.message || 'Re-analysis failed.');
+      return;
+    }
+    // Determine sport and render full results
+    const sport = data.protocol_type || 'bike';
+    if (sport === 'run') {
+      runResult = data;
+      renderAllResults(data, 'run');
+    } else {
+      bikeResult = data;
+      renderAllResults(data, 'bike');
+    }
+    updateSaveButton();
+    // Scroll to results
+    const section = document.getElementById(sport + '-results-section');
+    if (section) section.scrollIntoView({ behavior: 'smooth' });
+  } catch (err) {
+    alert('Re-analysis error: ' + err.message);
+  }
 }
 
 function viewHistoryTest(index) {

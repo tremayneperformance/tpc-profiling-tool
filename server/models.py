@@ -88,6 +88,10 @@ class TestSession(db.Model):
     archetype = db.Column(db.String(50), nullable=True)
     analysis_json = db.Column(db.Text, nullable=True)  # Full analysis result as JSON
 
+    # Original FIT file (gzip-compressed bytes)
+    fit_file_name = db.Column(db.String(255), nullable=True)
+    fit_file_data = db.Column(db.LargeBinary, nullable=True)
+
     records = db.relationship('TestRecord', backref='session', lazy='dynamic',
                               cascade='all, delete-orphan')
     rr_data = db.relationship('RRInterval', backref='session', lazy='dynamic',

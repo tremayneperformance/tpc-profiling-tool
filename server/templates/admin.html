@@ -18,7 +18,7 @@
       <a href="/analysis">Analysis</a>
       <a href="/admin" class="active">Data</a>
     </div>
-    <button id="nav-logout" class="top-nav-logout">Logout</button>
+    <button class="top-nav-logout" onclick="localStorage.removeItem('auth_token');localStorage.removeItem('auth_user');window.location='/';">Logout</button>
   </div>
 </nav>
 
@@ -205,11 +205,7 @@
     if (e.key === 'Enter') document.getElementById('auth-login-btn').click();
   });
 
-  document.getElementById('nav-logout').addEventListener('click', () => {
-    token = null;
-    localStorage.removeItem('auth_token');
-    showAuth();
-  });
+  // Logout handled by inline onclick on nav button
 
   // ------- API HELPERS -------
   function api(url) {

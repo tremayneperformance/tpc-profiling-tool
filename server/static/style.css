@@ -2187,6 +2187,19 @@ header { position: relative; }
   line-height: 1;
 }
 .history-btn-delete:hover { background: rgba(239, 68, 68, 0.15); }
+.history-btn-reanalyze {
+  background: none;
+  border: 1px solid var(--accent, #3b82f6);
+  cursor: pointer;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  color: var(--accent, #3b82f6);
+  font-size: 0.7rem;
+  font-weight: 500;
+  margin-right: 0.35rem;
+  transition: background 0.15s;
+}
+.history-btn-reanalyze:hover { background: rgba(59, 130, 246, 0.15); }
 .history-empty {
   color: var(--text-muted, #6b7280);
   font-style: italic;

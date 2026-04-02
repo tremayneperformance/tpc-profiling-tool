@@ -15,7 +15,9 @@ import os
 import sys
 import gzip
 import json
+import hashlib
 from datetime import datetime
+from collections import OrderedDict
 
 import numpy as np
 from scipy import stats
@@ -63,6 +65,24 @@ def create_app():
     app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB
 
     db.init_app(app)
+
+    # In-memory cache for FIT files between analyze and save (max 20 entries)
+    fit_cache = OrderedDict()
+    FIT_CACHE_MAX = 20
+
+    def cache_fit_file(file_bytes, filename):
+        """Store FIT file bytes, return cache key."""
+        key = hashlib.sha256(file_bytes).hexdigest()[:16]
+        compressed = gzip.compress(file_bytes)
+        fit_cache[key] = {'data': compressed, 'name': filename}
+        # Evict oldest if over limit
+        while len(fit_cache) > FIT_CACHE_MAX:
+            fit_cache.popitem(last=False)
+        return key
+
+    def pop_fit_file(key):
+        """Retrieve and remove FIT file from cache."""
+        return fit_cache.pop(key, None)
 
     with app.app_context():
         db.create_all()
@@ -756,6 +776,11 @@ def create_app():
         if not athlete:
             return jsonify({'status': 'error', 'message': 'athlete required.'}), 400
         tests = ramp_analysis.get_ramp_test_history(athlete)
+        for t in tests:
+            has_fit = bool(t.get('fit_file_data'))
+            t.pop('fit_file_data', None)
+            t.pop('fit_file_name', None)
+            t['has_fit_file'] = has_fit
         return jsonify({'status': 'ok', 'athlete': athlete, 'tests': tests})
 
     @app.route('/api/analysis/ftp-history', methods=['GET'])
@@ -805,6 +830,9 @@ def create_app():
     @coach_required
     def all_ramp_tests():
         tests = ramp_analysis.get_all_ramp_tests()
+        for t in tests:
+            t.pop('fit_file_data', None)
+            t.pop('fit_file_name', None)
         return jsonify({'status': 'ok', 'tests': tests})
 
     @app.route('/api/analysis/generate-report', methods=['POST'])
@@ -923,6 +951,58 @@ def create_app():
             }
         })
 
+    @app.route('/api/admin/fit-download/<athlete_name>/<int:test_index>', methods=['GET'])
+    @coach_required
+    def download_fit_file(athlete_name, test_index):
+        """Download a stored FIT file for a saved ramp test."""
+        tests = ramp_analysis.get_ramp_test_history(athlete_name)
+        if test_index < 0 or test_index >= len(tests):
+            return jsonify({'status': 'error', 'message': 'Test not found.'}), 404
+        test = tests[test_index]
+        fit_hex = test.get('fit_file_data')
+        if not fit_hex:
+            return jsonify({'status': 'error', 'message': 'No FIT file stored for this test.'}), 404
+        fit_compressed = bytes.fromhex(fit_hex)
+        fit_bytes = gzip.decompress(fit_compressed)
+        filename = test.get('fit_file_name', f'{athlete_name}_ramp.fit')
+        if not filename.lower().endswith('.fit'):
+            filename = filename + '.fit'
+        response = make_response(fit_bytes)
+        response.headers['Content-Type'] = 'application/octet-stream'
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    @app.route('/api/admin/reanalyze/<athlete_name>/<int:test_index>', methods=['POST'])
+    @coach_required
+    def reanalyze_test(athlete_name, test_index):
+        """Re-run ramp analysis on a stored FIT file."""
+        tests = ramp_analysis.get_ramp_test_history(athlete_name)
+        if test_index < 0 or test_index >= len(tests):
+            return jsonify({'status': 'error', 'message': 'Test not found.'}), 404
+        test = tests[test_index]
+        fit_hex = test.get('fit_file_data')
+        if not fit_hex:
+            return jsonify({'status': 'error', 'message': 'No FIT file stored for this test.'}), 404
+        fit_compressed = bytes.fromhex(fit_hex)
+        file_bytes = gzip.decompress(fit_compressed)
+
+        protocol_type = test.get('protocol_type', 'bike')
+        threshold_pace_sec = _float_or_none(test.get('threshold_pace_sec'))
+        try:
+            result = ramp_analysis.analyze_ramp_test(
+                file_bytes, None,
+                protocol_type=protocol_type,
+                threshold_pace_sec=threshold_pace_sec,
+            )
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': f'Re-analysis failed: {e}'}), 400
+
+        # Cache the FIT file again for potential re-save
+        fit_key = cache_fit_file(file_bytes, test.get('fit_file_name', 'reanalysis.fit'))
+        result['fit_cache_key'] = fit_key
+
+        return jsonify(result)
+
     # -----------------------------------------------------------------------
     # LEGACY ROUTE ALIASES — so existing analysis dashboard HTML works
     # without rewriting all fetch() calls. All require coach auth.
@@ -960,6 +1040,7 @@ def create_app():
         if 'fit_file' not in request.files:
             return jsonify({'status': 'error', 'message': 'No file uploaded.'}), 400
         f = request.files['fit_file']
+        original_filename = f.filename
         file_bytes = f.read()
         fname = f.filename.lower()
         if fname.endswith('.gz'):
@@ -987,6 +1068,11 @@ def create_app():
             )
         except Exception as e:
             return jsonify({'status': 'error', 'message': f'Analysis failed: {e}'}), 400
+
+        # Cache FIT file for later save
+        fit_key = cache_fit_file(file_bytes, original_filename)
+        result['fit_cache_key'] = fit_key
+
         return jsonify(result)
 
     @app.route('/analyze_ftp_test', methods=['POST'])
@@ -1069,6 +1155,14 @@ def create_app():
         for k in ('weight_kg', 'hrmax_bike', 'hrmax_run', 'threshold_pace'):
             if data.get(k) is not None:
                 result[k] = data[k]
+
+        # Persist the FIT file from cache if available
+        fit_key = data.get('fit_cache_key') or result.get('fit_cache_key')
+        fit_entry = pop_fit_file(fit_key) if fit_key else None
+        if fit_entry:
+            result['fit_file_data'] = fit_entry['data'].hex()  # Store as hex in JSON
+            result['fit_file_name'] = fit_entry['name']
+
         ok = ramp_analysis.save_ramp_test_result(athlete_name, result)
         if ok:
             return jsonify({'status': 'ok', 'message': f'Ramp test saved for {athlete_name}.'})
@@ -1093,6 +1187,12 @@ def create_app():
         if not athlete:
             return jsonify({'status': 'error', 'message': 'athlete required.'}), 400
         tests = ramp_analysis.get_ramp_test_history(athlete)
+        # Strip large FIT blob from response, replace with boolean flag
+        for t in tests:
+            has_fit = bool(t.get('fit_file_data'))
+            t.pop('fit_file_data', None)
+            t.pop('fit_file_name', None)
+            t['has_fit_file'] = has_fit
         return jsonify({'status': 'ok', 'athlete': athlete, 'tests': tests})
 
     @app.route('/ftp_test_history', methods=['GET'])
@@ -1141,6 +1241,9 @@ def create_app():
     @coach_required
     def legacy_all_ramp():
         tests = ramp_analysis.get_all_ramp_tests()
+        for t in tests:
+            t.pop('fit_file_data', None)
+            t.pop('fit_file_name', None)
         return jsonify({'status': 'ok', 'tests': tests})
 
     @app.route('/generate_report', methods=['POST'])

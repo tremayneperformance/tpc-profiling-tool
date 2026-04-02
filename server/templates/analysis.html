@@ -641,6 +641,23 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════════════
+// AUTH — inject JWT into all API requests
+// ═══════════════════════════════════════════════════════════════════
+function authFetch(url, options = {}) {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    options.headers = options.headers || {};
+    // Don't override Content-Type for FormData (browser sets boundary)
+    if (options.headers instanceof Headers) {
+      options.headers.set('Authorization', 'Bearer ' + token);
+    } else {
+      options.headers['Authorization'] = 'Bearer ' + token;
+    }
+  }
+  return fetch(url, options);
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════════
 let rampFile = null;     // bike DFA file
@@ -675,7 +692,7 @@ let runFtpMode = 'manual';
 
   async function fetchAthleteList() {
     try {
-      const resp = await fetch('/athlete_list');
+      const resp = await authFetch('/athlete_list');
       const data = await resp.json();
       if (data.status === 'ok') athleteList = data.athletes || [];
     } catch (e) { /* silent */ }
@@ -756,7 +773,7 @@ let runFtpMode = 'manual';
 
 async function loadAthleteProfile(name) {
   try {
-    const resp = await fetch(`/athlete_profile?name=${encodeURIComponent(name)}`);
+    const resp = await authFetch(`/athlete_profile?name=${encodeURIComponent(name)}`);
     const data = await resp.json();
     if (data.status !== 'ok' || !data.profile) return;
     const p = data.profile;
@@ -1125,7 +1142,7 @@ async function doBikeAnalysis(segmentsOverride) {
   if (segmentsOverride) formData.append('segments_override', JSON.stringify(segmentsOverride));
 
   try {
-    const resp = await fetch('/analyze_ramp', { method: 'POST', body: formData });
+    const resp = await authFetch('/analyze_ramp', { method: 'POST', body: formData });
     const data = await resp.json();
     if (data.status !== 'ok') { showRampStatus('bike', data.message || 'Analysis failed.', 'error'); return; }
     bikeResult = data;
@@ -1156,7 +1173,7 @@ async function doRunAnalysis(segmentsOverride) {
   if (segmentsOverride) formData.append('segments_override', JSON.stringify(segmentsOverride));
 
   try {
-    const resp = await fetch('/analyze_ramp', { method: 'POST', body: formData });
+    const resp = await authFetch('/analyze_ramp', { method: 'POST', body: formData });
     const data = await resp.json();
     if (data.status !== 'ok') { showRampStatus('run', data.message || 'Analysis failed.', 'error'); return; }
     runResult = data;
@@ -1933,7 +1950,7 @@ document.getElementById('bike-ftp-analyze-btn').addEventListener('click', async 
   formData.append('fit_file', file);
 
   try {
-    const resp = await fetch('/analyze_ftp_test', { method: 'POST', body: formData });
+    const resp = await authFetch('/analyze_ftp_test', { method: 'POST', body: formData });
     const data = await resp.json();
     if (data.status !== 'ok') { showFtpDetectStatus('bike', data.message, 'error'); btn.disabled = false; return; }
     hideFtpDetectStatus('bike');
@@ -1960,7 +1977,7 @@ document.getElementById('run-ftp-analyze-btn').addEventListener('click', async (
   formData.append('fit_file', file);
 
   try {
-    const resp = await fetch('/analyze_ftp_test', { method: 'POST', body: formData });
+    const resp = await authFetch('/analyze_ftp_test', { method: 'POST', body: formData });
     const data = await resp.json();
     if (data.status !== 'ok') { showFtpDetectStatus('run', data.message, 'error'); btn.disabled = false; return; }
     hideFtpDetectStatus('run');
@@ -2126,7 +2143,7 @@ async function calculateFTPProfile(payload, fitData, sportPrefix) {
   showFtpStatus(sportPrefix, 'Calculating profile\u2026', 'info');
 
   try {
-    const resp = await fetch('/calculate_ftp_profile', {
+    const resp = await authFetch('/calculate_ftp_profile', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
@@ -2344,7 +2361,7 @@ async function saveFTPTest(athleteName, result, sportPrefix) {
   btn.textContent = 'Saving\u2026';
 
   try {
-    const resp = await fetch('/save_ftp_test', {
+    const resp = await authFetch('/save_ftp_test', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ athlete_name: athleteName, result }),
     });
@@ -2369,7 +2386,7 @@ async function saveFTPTest(athleteName, result, sportPrefix) {
 async function loadFtpHistory(athleteName, sport) {
   if (!athleteName) return;
   try {
-    const resp = await fetch(`/ftp_test_history?athlete=${encodeURIComponent(athleteName)}&sport=${sport || ''}`);
+    const resp = await authFetch(`/ftp_test_history?athlete=${encodeURIComponent(athleteName)}&sport=${sport || ''}`);
     const data = await resp.json();
     if (data.status !== 'ok') return;
     const tests = data.tests || [];
@@ -2407,7 +2424,7 @@ async function loadFtpHistory(athleteName, sport) {
 async function deleteFtpTest(athleteName, testIndex, sport) {
   if (!confirm('Delete this test from history?')) return;
   try {
-    await fetch('/delete_ftp_test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ athlete_name: athleteName, test_index: testIndex }) });
+    await authFetch('/delete_ftp_test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ athlete_name: athleteName, test_index: testIndex }) });
     loadFtpHistory(athleteName, sport);
   } catch (err) { console.warn('Failed to delete test:', err); }
 }
@@ -2511,7 +2528,7 @@ document.getElementById('ramp-save-btn').addEventListener('click', async () => {
     if (hrmRun) payload.hrmax_run = hrmRun;
     const paceStr = document.getElementById('run-threshold-pace').value.trim();
     if (paceStr) payload.threshold_pace = paceStr;
-    const resp = await fetch('/save_ramp_test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const resp = await authFetch('/save_ramp_test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const result = await resp.json();
     if (result.status === 'ok') savedCount++;
     else lastError = result.message || 'Save failed.';
@@ -2525,7 +2542,7 @@ document.getElementById('ramp-save-btn').addEventListener('click', async () => {
       confirmEl.hidden = false;
       loadHistory(name);
       loadAllTests();
-      fetch('/athlete_list').then(r => r.json()).then(d => { if (d.status === 'ok') athleteList = d.athletes || []; }).catch(() => {});
+      authFetch('/athlete_list').then(r => r.json()).then(d => { if (d.status === 'ok') athleteList = d.athletes || []; }).catch(() => {});
       setTimeout(() => confirmEl.hidden = true, 3000);
     }
     if (lastError) showRampStatus('bike', lastError, 'error');
@@ -2539,7 +2556,7 @@ document.getElementById('ramp-save-btn').addEventListener('click', async () => {
 // ═══════════════════════════════════════════════════════════════════
 async function loadHistory(athleteName) {
   try {
-    const resp = await fetch(`/ramp_test_history?athlete=${encodeURIComponent(athleteName)}`);
+    const resp = await authFetch(`/ramp_test_history?athlete=${encodeURIComponent(athleteName)}`);
     const data = await resp.json();
     if (data.status !== 'ok') return;
 
@@ -2572,7 +2589,7 @@ async function loadHistory(athleteName) {
 async function deleteRampTest(athleteName, index) {
   if (!confirm('Delete this test?')) return;
   try {
-    await fetch('/delete_ramp_test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ athlete_name: athleteName, test_index: index }) });
+    await authFetch('/delete_ramp_test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ athlete_name: athleteName, test_index: index }) });
     loadHistory(athleteName);
     loadAllTests();
   } catch (err) { /* silent */ }
@@ -2664,7 +2681,7 @@ function toggleAllTestsPanel() {
 
 async function loadAllTests() {
   try {
-    const resp = await fetch('/all_ramp_tests');
+    const resp = await authFetch('/all_ramp_tests');
     const data = await resp.json();
     if (data.status === 'ok') { _allTests = data.tests || []; populateAthleteFilter(); renderAllTestsTable(); }
   } catch (e) { console.error('Failed to load all tests:', e); }
@@ -2796,7 +2813,7 @@ async function generateReport() {
   const hrmax = getHRmax(_exportSport === 'run' ? 'run' : 'bike');
 
   try {
-    const resp = await fetch('/generate_report', {
+    const resp = await authFetch('/generate_report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

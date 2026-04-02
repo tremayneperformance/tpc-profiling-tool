@@ -1305,10 +1305,16 @@ function renderThresholds(thr, regP, regH, hrmax, weight, paceData, pfx) {
   }
 
   // Error margins from literature
-  const hrvt1_pwr_err = 0.06;   // ±6% (Mateo-March 2023; Zimatore 2021)
-  const hrvt1_hr_err = 3;       // ±3 bpm
-  const hrvt2_pwr_err = thr.hrvt2_extrapolated ? 0.10 : 0.08;  // ±8-10% (wider when extrapolated)
-  const hrvt2_hr_err = thr.hrvt2_extrapolated ? 6 : 5;          // ±5-6 bpm
+  // HRVT1s (fixed α1=0.75): ±6% power, ±3 bpm — population-level cutoff (Mateo-March 2023; Zimatore 2021)
+  const hrvt1s_pwr_err = 0.06;
+  const hrvt1s_hr_err = 3;
+  // HRVT1c (individualised α1*): ±4% power, ±2 bpm — tighter agreement due to
+  // per-athlete calibration from warmup baseline, reducing inter-individual error (Rogers 2024)
+  const hrvt1c_pwr_err = 0.04;
+  const hrvt1c_hr_err = 2;
+  // HRVT2 (α1=0.50): ±8-10% power, ±5-6 bpm — wider uncertainty, especially when extrapolated
+  const hrvt2_pwr_err = thr.hrvt2_extrapolated ? 0.10 : 0.08;
+  const hrvt2_hr_err = thr.hrvt2_extrapolated ? 6 : 5;
 
   function rangeRow(pwrVal, hrVal, pctErr, bpmErr, speedVal) {
     const parts = [];
@@ -1322,7 +1328,7 @@ function renderThresholds(thr, regP, regH, hrmax, weight, paceData, pfx) {
     return `<div class="card-range">Range: ${parts.join(' · ')}</div>`;
   }
 
-  const rangeRef = '<div class="card-range-ref">Mateo-March 2023; Zimatore 2021; Rogers 2021</div>';
+  const rangeRef = '<div class="card-range-ref">Mateo-March 2023; Zimatore 2021; Rogers 2021, 2024</div>';
 
   if (isRun) {
     cards.innerHTML = `
@@ -1330,14 +1336,14 @@ function renderThresholds(thr, regP, regH, hrmax, weight, paceData, pfx) {
         <div class="card-label">HRVT1 Standard</div>
         <div class="card-value">${paceData.hrvt1s_pace || '--:--'}/km</div>
         <div class="card-unit">${thr.hrvt1s_power ? thr.hrvt1s_power.toFixed(2) + ' m/s' : ''} &middot; ${thr.hrvt1s_hr ? thr.hrvt1s_hr + ' bpm' : ''}${pctTag(thr.hrvt1s_hr)}</div>
-        ${rangeRow(thr.hrvt1s_power, thr.hrvt1s_hr, hrvt1_pwr_err, hrvt1_hr_err, thr.hrvt1s_power)}
+        ${rangeRow(thr.hrvt1s_power, thr.hrvt1s_hr, hrvt1s_pwr_err, hrvt1s_hr_err, thr.hrvt1s_power)}
         <div class="card-note">&alpha;1 = 0.75</div>
       </div>
       <div class="card" style="border-left-color:#22c55e">
         <div class="card-label">HRVT1 Individualised</div>
         <div class="card-value">${paceData.hrvt1c_pace || '--:--'}/km</div>
         <div class="card-unit">${thr.hrvt1c_power ? thr.hrvt1c_power.toFixed(2) + ' m/s' : ''} &middot; ${thr.hrvt1c_hr ? thr.hrvt1c_hr + ' bpm' : ''}${pctTag(thr.hrvt1c_hr)}</div>
-        ${rangeRow(thr.hrvt1c_power, thr.hrvt1c_hr, hrvt1_pwr_err, hrvt1_hr_err, thr.hrvt1c_power)}
+        ${rangeRow(thr.hrvt1c_power, thr.hrvt1c_hr, hrvt1c_pwr_err, hrvt1c_hr_err, thr.hrvt1c_power)}
         <div class="card-note">&alpha;1 = ${thr.a1_star || '?'} (Rogers 2024)</div>
       </div>
       <div class="card" style="border-left-color:#ef4444">
@@ -1354,14 +1360,14 @@ function renderThresholds(thr, regP, regH, hrmax, weight, paceData, pfx) {
         <div class="card-label">HRVT1 Standard</div>
         <div class="card-value">${thr.hrvt1s_power ? thr.hrvt1s_power + ' W' : '&mdash;'}${wkgTag(thr.hrvt1s_power, weight)}</div>
         <div class="card-unit">${thr.hrvt1s_hr ? thr.hrvt1s_hr + ' bpm' : ''}${pctTag(thr.hrvt1s_hr)}</div>
-        ${rangeRow(thr.hrvt1s_power, thr.hrvt1s_hr, hrvt1_pwr_err, hrvt1_hr_err)}
+        ${rangeRow(thr.hrvt1s_power, thr.hrvt1s_hr, hrvt1s_pwr_err, hrvt1s_hr_err)}
         <div class="card-note">&alpha;1 = 0.75</div>
       </div>
       <div class="card" style="border-left-color:#22c55e">
         <div class="card-label">HRVT1 Individualised</div>
         <div class="card-value">${thr.hrvt1c_power ? thr.hrvt1c_power + ' W' : '&mdash;'}${wkgTag(thr.hrvt1c_power, weight)}</div>
         <div class="card-unit">${thr.hrvt1c_hr ? thr.hrvt1c_hr + ' bpm' : ''}${pctTag(thr.hrvt1c_hr)}</div>
-        ${rangeRow(thr.hrvt1c_power, thr.hrvt1c_hr, hrvt1_pwr_err, hrvt1_hr_err)}
+        ${rangeRow(thr.hrvt1c_power, thr.hrvt1c_hr, hrvt1c_pwr_err, hrvt1c_hr_err)}
         <div class="card-note">&alpha;1 = ${thr.a1_star || '?'} (Rogers 2024)</div>
       </div>
       <div class="card" style="border-left-color:#ef4444">

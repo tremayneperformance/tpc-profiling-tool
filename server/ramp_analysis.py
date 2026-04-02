@@ -1727,7 +1727,7 @@ def detect_ceiling_limited_run(ar, ramp_status, tte_status, tte_duration_sec=Non
 
 
 def generate_athlete_feedback(hrvt1c_power, hrvt2_power, max_effort_power,
-                              effort_status, archetype_result):
+                              effort_status, archetype_result, is_run=False):
     """
     Generate concise, objective feedback split into strengths and weaknesses.
 
@@ -1746,92 +1746,134 @@ def generate_athlete_feedback(hrvt1c_power, hrvt2_power, max_effort_power,
                   and hrvt1c_power is not None
                   and hrvt2_power is not None)
 
+    # Helper: format a value as pace (running) or watts (cycling)
+    def _fv(val):
+        if is_run:
+            return format_pace(speed_to_pace_sec(val))
+        return f'{val:.0f} W'
+
+    unit_label = '/km' if is_run else ''
+    ftp_label = 'CV' if is_run else 'FTP'
+
     # ── Max Aerobic Capacity ──
     if has_effort:
-        me = f'{max_effort_power:.0f}'
-        strengths.append(f'3-min max aerobic power: {me} W')
+        if is_run:
+            strengths.append(f'3-min max aerobic pace: {_fv(max_effort_power)}/km')
+        else:
+            strengths.append(f'3-min max aerobic power: {_fv(max_effort_power)}')
 
     # ── AFU — Aerobic Base ──
     if has_effort and afu is not None:
         afu_score = _score_afu(afu)
-        h1c = f'{hrvt1c_power:.0f}'
-        me = f'{max_effort_power:.0f}'
         pct = f'{afu * 100:.0f}'
         if afu_score >= 8:
             strengths.append(
-                f'Strong aerobic base: {h1c} W ({pct}% of {me} W ceiling)')
+                f'Strong aerobic base: {_fv(hrvt1c_power)} ({pct}% of {_fv(max_effort_power)} ceiling)')
         elif afu_score >= 6:
             weaknesses.append(
-                f'Moderate aerobic base: {h1c} W ({pct}% of {me} W ceiling). Room to improve.')
+                f'Moderate aerobic base: {_fv(hrvt1c_power)} ({pct}% of {_fv(max_effort_power)} ceiling). Room to improve.')
         else:
             weaknesses.append(
-                f'Underdeveloped aerobic base: {h1c} W ({pct}% of {me} W ceiling). Priority area.')
+                f'Underdeveloped aerobic base: {_fv(hrvt1c_power)} ({pct}% of {_fv(max_effort_power)} ceiling). Priority area.')
 
     # ── ATPR — Threshold Gap ──
     if hrvt1c_power is not None and hrvt2_power is not None and atpr is not None:
         atpr_score = _score_atpr(atpr)
-        h1c = f'{hrvt1c_power:.0f}'
-        h2 = f'{hrvt2_power:.0f}'
-        gap = f'{hrvt2_power - hrvt1c_power:.0f}'
-        if atpr_score >= 8:
-            strengths.append(
-                f'Narrow threshold gap: {gap} W between HRVT1 ({h1c} W) and FTP ({h2} W)')
-        elif atpr_score >= 6:
-            weaknesses.append(
-                f'Moderate threshold gap: {gap} W between HRVT1 ({h1c} W) and FTP ({h2} W)')
+        if is_run:
+            h1_pace = format_pace(speed_to_pace_sec(hrvt1c_power))
+            h2_pace = format_pace(speed_to_pace_sec(hrvt2_power))
+            gap_sec = (speed_to_pace_sec(hrvt1c_power) or 0) - (speed_to_pace_sec(hrvt2_power) or 0)
+            gap_str = f'{gap_sec:.0f}s/km'
+            if atpr_score >= 8:
+                strengths.append(
+                    f'Narrow threshold gap: {gap_str} between HRVT1 ({h1_pace}/km) and {ftp_label} ({h2_pace}/km)')
+            elif atpr_score >= 6:
+                weaknesses.append(
+                    f'Moderate threshold gap: {gap_str} between HRVT1 ({h1_pace}/km) and {ftp_label} ({h2_pace}/km)')
+            else:
+                weaknesses.append(
+                    f'Wide threshold gap: {gap_str} between HRVT1 ({h1_pace}/km) and {ftp_label} ({h2_pace}/km)')
         else:
-            weaknesses.append(
-                f'Wide threshold gap: {gap} W between HRVT1 ({h1c} W) and FTP ({h2} W)')
+            gap = f'{hrvt2_power - hrvt1c_power:.0f}'
+            if atpr_score >= 8:
+                strengths.append(
+                    f'Narrow threshold gap: {gap} W between HRVT1 ({hrvt1c_power:.0f} W) and {ftp_label} ({hrvt2_power:.0f} W)')
+            elif atpr_score >= 6:
+                weaknesses.append(
+                    f'Moderate threshold gap: {gap} W between HRVT1 ({hrvt1c_power:.0f} W) and {ftp_label} ({hrvt2_power:.0f} W)')
+            else:
+                weaknesses.append(
+                    f'Wide threshold gap: {gap} W between HRVT1 ({hrvt1c_power:.0f} W) and {ftp_label} ({hrvt2_power:.0f} W)')
 
     # ── AR — Reserve Above Threshold ──
     if has_effort and ar is not None:
         ar_score = _score_ar(ar)
         ceiling_limited = ar < CEILING_LIMITED_AR_THRESHOLD
-        reserve = f'{max_effort_power - hrvt2_power:.0f}'
-        h2 = f'{hrvt2_power:.0f}'
-        me = f'{max_effort_power:.0f}'
-        if ceiling_limited:
-            weaknesses.append(
-                f'Ceiling-limited: only {reserve} W above FTP ({h2} W). '
-                f'VO\u2082max work needed to raise the ceiling.')
-        elif ar_score >= 8:
-            strengths.append(
-                f'High power conversion: {reserve} W reserve above FTP ({h2} W)')
-        elif ar_score >= 6:
-            strengths.append(
-                f'Moderate reserve: {reserve} W above FTP ({h2} W)')
+        if is_run:
+            h2_pace = format_pace(speed_to_pace_sec(hrvt2_power))
+            reserve_sec = (speed_to_pace_sec(hrvt2_power) or 0) - (speed_to_pace_sec(max_effort_power) or 0)
+            reserve_str = f'{reserve_sec:.0f}s/km'
+            if ceiling_limited:
+                weaknesses.append(
+                    f'Ceiling-limited: only {reserve_str} faster than {ftp_label} ({h2_pace}/km). '
+                    f'VO\u2082max work needed to raise the ceiling.')
+            elif ar_score >= 8:
+                strengths.append(
+                    f'High pace conversion: {reserve_str} reserve beyond {ftp_label} ({h2_pace}/km)')
+            elif ar_score >= 6:
+                strengths.append(
+                    f'Moderate reserve: {reserve_str} beyond {ftp_label} ({h2_pace}/km)')
+            else:
+                weaknesses.append(
+                    f'Large untapped reserve: {reserve_str} beyond {ftp_label} ({h2_pace}/km). '
+                    f'Sustainable pace has not matched capacity.')
         else:
-            weaknesses.append(
-                f'Large untapped reserve: {reserve} W above FTP ({h2} W). '
-                f'Sustainable power has not matched capacity.')
+            reserve = f'{max_effort_power - hrvt2_power:.0f}'
+            h2 = f'{hrvt2_power:.0f}'
+            if ceiling_limited:
+                weaknesses.append(
+                    f'Ceiling-limited: only {reserve} W above {ftp_label} ({h2} W). '
+                    f'VO\u2082max work needed to raise the ceiling.')
+            elif ar_score >= 8:
+                strengths.append(
+                    f'High power conversion: {reserve} W reserve above {ftp_label} ({h2} W)')
+            elif ar_score >= 6:
+                strengths.append(
+                    f'Moderate reserve: {reserve} W above {ftp_label} ({h2} W)')
+            else:
+                weaknesses.append(
+                    f'Large untapped reserve: {reserve} W above {ftp_label} ({h2} W). '
+                    f'Sustainable power has not matched capacity.')
 
     # ── AnFU — Sustainable Fraction ──
     if has_effort and anfu is not None:
-        h2 = f'{hrvt2_power:.0f}'
-        me = f'{max_effort_power:.0f}'
         pct = f'{anfu * 100:.0f}'
         if anfu > 0.85:
             strengths.append(
-                f'High sustainability: {h2} W sustained ({pct}% of {me} W)')
+                f'High sustainability: {_fv(hrvt2_power)} sustained ({pct}% of {_fv(max_effort_power)})')
         elif anfu >= 0.78:
             strengths.append(
-                f'Good sustainability: {h2} W sustained ({pct}% of {me} W)')
+                f'Good sustainability: {_fv(hrvt2_power)} sustained ({pct}% of {_fv(max_effort_power)})')
         else:
             weaknesses.append(
-                f'Low sustainability: {h2} W sustained ({pct}% of {me} W)')
+                f'Low sustainability: {_fv(hrvt2_power)} sustained ({pct}% of {_fv(max_effort_power)})')
 
     # ── TSR — Zone 2 Width ──
     if hrvt1c_power is not None and hrvt2_power is not None and tsr is not None:
-        gap = f'{hrvt2_power - hrvt1c_power:.0f}'
+        if is_run:
+            gap_sec = (speed_to_pace_sec(hrvt1c_power) or 0) - (speed_to_pace_sec(hrvt2_power) or 0)
+            gap_str = f'{gap_sec:.0f}s/km'
+        else:
+            gap_str = f'{hrvt2_power - hrvt1c_power:.0f} W'
         if tsr < 0.18:
             strengths.append(
-                f'Narrow Zone 2: {gap} W band. Low pacing penalty.')
+                f'Narrow Zone 2: {gap_str} band. Low pacing penalty.')
         elif tsr <= 0.25:
             weaknesses.append(
-                f'Moderate Zone 2 width: {gap} W band. Pacing matters.')
+                f'Moderate Zone 2 width: {gap_str} band. Pacing matters.')
         else:
             weaknesses.append(
-                f'Wide Zone 2: {gap} W band. Staying near HRVT1 critical for fuel economy.')
+                f'Wide Zone 2: {gap_str} band. Staying near HRVT1 critical for fuel economy.')
 
     return {'strengths': strengths, 'weaknesses': weaknesses}
 
@@ -1841,10 +1883,10 @@ def generate_athlete_feedback(hrvt1c_power, hrvt2_power, max_effort_power,
 # ═══════════════════════════════════════════════════════════════════════════
 
 def generate_training_recommendations(hrvt1c_power, hrvt2_power, max_effort_power,
-                                       effort_status, archetype_result):
+                                       effort_status, archetype_result, is_run=False):
     """
     Generate 3 dot-point training recommendations based on hidden AFU, ATPR, AR scores.
-    Uses actual watts. Returns list of strings.
+    Uses watts for cycling, pace for running. Returns list of strings.
     """
     afu = archetype_result.get('afu')
     atpr = archetype_result.get('atpr')
@@ -1852,8 +1894,17 @@ def generate_training_recommendations(hrvt1c_power, hrvt2_power, max_effort_powe
     ceiling_limited = archetype_result.get('ceiling_limited', False)
     has_effort = effort_status in ('VALID', 'FLAGGED') and max_effort_power
 
-    h1 = f'{hrvt1c_power:.0f}' if hrvt1c_power else '?'
-    h2 = f'{hrvt2_power:.0f}' if hrvt2_power else '?'
+    # Format threshold values appropriately
+    if is_run:
+        h1 = format_pace(speed_to_pace_sec(hrvt1c_power)) + '/km' if hrvt1c_power else '?'
+        h2 = format_pace(speed_to_pace_sec(hrvt2_power)) + '/km' if hrvt2_power else '?'
+    else:
+        h1 = f'{hrvt1c_power:.0f} W' if hrvt1c_power else '?'
+        h2 = f'{hrvt2_power:.0f} W' if hrvt2_power else '?'
+
+    intensity_word = 'pace' if is_run else 'power'
+    slower_word = 'slower than' if is_run else 'below'
+    between_word = 'between' if not is_run else 'from'
 
     # Compute hidden scores
     afu_score = _score_afu(afu) if afu is not None else None
@@ -1869,7 +1920,7 @@ def generate_training_recommendations(hrvt1c_power, hrvt2_power, max_effort_powe
         return [
             f'Your profile is well balanced and highly developed. Focus on race-specific '
             f'preparation, sustainment at target race intensities for race-relevant durations, '
-            f'and maintaining your aerobic base with consistent volume below {h1} W.'
+            f'and maintaining your aerobic base with consistent volume {slower_word} {h1}.'
         ]
 
     points = []
@@ -1879,34 +1930,34 @@ def generate_training_recommendations(hrvt1c_power, hrvt2_power, max_effort_powe
         if afu_score <= 2:
             points.append(
                 f'Your aerobic base is underdeveloped. Prioritise easy, sub-threshold '
-                f'volume below {h1} W to raise it.')
+                f'volume {slower_word} {h1} to raise it.')
         elif afu_score == 4:
             points.append(
-                f'Your aerobic base is low. Consistent volume below {h1} W is the most '
+                f'Your aerobic base is low. Consistent volume {slower_word} {h1} is the most '
                 f'effective way to build it.')
         elif afu_score == 6:
             points.append(
-                f'Your aerobic base is developing well. Maintain volume below {h1} W and '
+                f'Your aerobic base is developing well. Maintain volume {slower_word} {h1} and '
                 f'begin adding controlled threshold-zone exposure.')
         else:  # 8-10
             points.append(
-                f'Your aerobic base is strong. Maintain it with consistent easy volume below '
-                f'{h1} W and look elsewhere for gains.')
+                f'Your aerobic base is strong. Maintain it with consistent easy volume {slower_word} '
+                f'{h1} and look elsewhere for gains.')
 
     # ATPR advice
     if atpr_score is not None:
         if atpr_score <= 2:
             points.append(
                 f'Your threshold gap is very wide. Pacing on long efforts needs to be '
-                f'conservative as small errors above {h1} W carry a disproportionate fuel cost.')
+                f'conservative as small errors {"faster than" if is_run else "above"} {h1} carry a disproportionate fuel cost.')
         elif atpr_score == 4:
             points.append(
                 f'Your threshold gap is wide. The gap narrows primarily from below as '
-                f'aerobic volume pushes {h1} W higher.')
+                f'aerobic volume pushes {h1} {"faster" if is_run else "higher"}.')
         elif atpr_score == 6:
             points.append(
-                f'Your threshold gap is moderate. Controlled efforts between {h1} W and '
-                f'{h2} W will continue narrowing it.')
+                f'Your threshold gap is moderate. Controlled efforts {between_word} {h1} and '
+                f'{h2} will continue narrowing it.')
         else:  # 8-10
             points.append(
                 f'Your thresholds are well compressed. Race pace can sit closer to HRVT2 '
@@ -1917,19 +1968,19 @@ def generate_training_recommendations(hrvt1c_power, hrvt2_power, max_effort_powe
         if ar_score == 0:
             points.append(
                 f'Your reserve above HRVT2 is very large. This converts naturally as your '
-                f'base develops, no need to chase top-end power right now.')
+                f'base develops, no need to chase top-end {intensity_word} right now.')
         elif ar_score == 2:
             points.append(
                 f'Your reserve above HRVT2 is large. Focus on raising HRVT2 through base '
                 f'and threshold work rather than building more top end.')
         elif ar_score == 4:
             points.append(
-                f'Your reserve above HRVT2 is moderate. Sustainable power has room to grow '
+                f'Your reserve above HRVT2 is moderate. Sustainable {intensity_word} has room to grow '
                 f'as your base and threshold develop.')
         elif ar_score == 6:
             points.append(
                 f'Your reserve above HRVT2 is modest. Threshold duration work will continue '
-                f'to convert this into sustainable power.')
+                f'to convert this into sustainable {intensity_word}.')
         elif ar_score >= 8:
             if ceiling_limited:
                 points.append(
@@ -2201,6 +2252,7 @@ def analyze_ramp_test(file_bytes, segments_override=None,
         effort_validation.get('avg_power'),
         effort_validation['status'],
         archetype,
+        is_run=is_run,
     )
 
     # Part 7: Development level classification
@@ -2240,6 +2292,7 @@ def analyze_ramp_test(file_bytes, segments_override=None,
         effort_validation.get('avg_power'),
         effort_validation['status'],
         archetype,
+        is_run=is_run,
     )
 
     # Data quality

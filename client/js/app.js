@@ -254,6 +254,13 @@ const App = (() => {
         }
 
         document.getElementById('btn-logout').style.display = '';
+
+        // Show coach nav bar for coach/dev logins
+        const coachNav = document.getElementById('coach-nav');
+        if (coachNav && currentUser && currentUser.role === 'coach') {
+            coachNav.style.display = '';
+        }
+
         showScreen('setup-screen');
         updateProtocolPreview();
         updateStartButton();
@@ -266,6 +273,8 @@ const App = (() => {
         localStorage.removeItem('auth_user');
 
         // Reset UI
+        const coachNav = document.getElementById('coach-nav');
+        if (coachNav) coachNav.style.display = 'none';
         document.getElementById('btn-logout').style.display = 'none';
         document.getElementById('login-step-email').style.display = '';
         document.getElementById('login-step-pin').style.display = 'none';

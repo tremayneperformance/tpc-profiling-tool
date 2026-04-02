@@ -70,6 +70,57 @@
     50% { opacity: 0.6; }
 }
 
+/* --- Coach Navigation Bar --- */
+.top-nav {
+    background: rgba(14, 15, 18, 0.97);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    padding: 0 20px;
+}
+.top-nav-inner {
+    max-width: 600px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    height: 44px;
+    gap: 1.25rem;
+}
+.top-nav-brand {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #3b82f6;
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+.top-nav-links {
+    display: flex;
+    gap: 0.2rem;
+    flex: 1;
+}
+.top-nav-links a {
+    color: #9ca3af;
+    text-decoration: none;
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
+    transition: color 0.2s, background 0.2s;
+}
+.top-nav-links a:hover {
+    color: #e5e7eb;
+    background: rgba(59, 130, 246, 0.15);
+}
+.top-nav-links a.active {
+    color: #3b82f6;
+    background: rgba(59, 130, 246, 0.15);
+}
+
 /* --- Login & Logout --- */
 .btn-logout {
     background: transparent;

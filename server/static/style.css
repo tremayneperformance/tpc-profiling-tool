@@ -85,13 +85,14 @@ input, select, textarea, button {
   gap: 1.5rem;
 }
 .top-nav-brand {
-  font-family: 'Montserrat', sans-serif;
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: var(--accent);
   text-decoration: none;
-  letter-spacing: 0.05em;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.top-nav-logo {
+  height: 28px;
+  width: auto;
 }
 .top-nav-links {
   display: flex;

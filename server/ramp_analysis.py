@@ -1036,7 +1036,12 @@ def _fit_regression_and_solve(stage_data, x_key, threshold):
     Linear regression of a1_mean vs x_key (power or HR).
     Identify stages with near-linear decline, fit regression, solve for threshold.
 
-    Returns {value, slope, intercept, r2, n, extrapolated, ci_95}
+    Uses iterative outlier rejection: fit initial regression, compute
+    standardised residuals, exclude points > 2 SD, refit. This prevents
+    late-stage rebounds (e.g. chaotic HRV at exhaustion) from skewing
+    threshold estimates.
+
+    Returns {value, slope, intercept, r2, n, extrapolated, ci_95, excluded_stages}
     """
     # Filter valid stages
     valid = [
@@ -1046,26 +1051,70 @@ def _fit_regression_and_solve(stage_data, x_key, threshold):
 
     if len(valid) < 4:
         return {'value': None, 'slope': None, 'intercept': None,
-                'r2': None, 'n': 0, 'extrapolated': False, 'ci_95': None}
+                'r2': None, 'n': 0, 'extrapolated': False, 'ci_95': None,
+                'excluded_stages': []}
 
     # Identify the declining subset
     # Start: first stage where a1 is declining from peak
-    # End: last stage before a1 flattens at or below threshold
     a1_vals = [s['a1_mean'] for s in valid]
     peak_idx = int(np.argmax(a1_vals))
 
-    # Build regression subset: from peak onwards, excluding stages where
-    # a1 increases by >0.1 from previous
+    # Build initial regression subset: from peak onwards, excluding stages
+    # where a1 increases by >0.15 from previous (gross artifact filter)
     reg_stages = [valid[peak_idx]]
     for i in range(peak_idx + 1, len(valid)):
-        if valid[i]['a1_mean'] > reg_stages[-1]['a1_mean'] + 0.1:
-            continue  # Skip anomalous increase
+        if valid[i]['a1_mean'] > reg_stages[-1]['a1_mean'] + 0.15:
+            continue  # Skip obvious anomalous increase
         reg_stages.append(valid[i])
 
     if len(reg_stages) < 4:
         return {'value': None, 'slope': None, 'intercept': None,
-                'r2': None, 'n': 0, 'extrapolated': False, 'ci_95': None}
+                'r2': None, 'n': 0, 'extrapolated': False, 'ci_95': None,
+                'excluded_stages': []}
 
+    # Iterative outlier rejection (up to 2 passes)
+    excluded_stages = []
+    for _pass in range(2):
+        x = np.array([s[x_key] for s in reg_stages])
+        y = np.array([s['a1_mean'] for s in reg_stages])
+
+        if len(x) < 4:
+            break
+
+        slope, intercept, r_value, _, _ = stats.linregress(x, y)
+
+        # Only reject outliers if we have enough points and slope is negative
+        if slope >= 0 or len(x) < 5:
+            break
+
+        # Compute standardised residuals
+        predicted = slope * x + intercept
+        residuals = y - predicted
+        std_res = np.std(residuals)
+
+        if std_res < 1e-9:
+            break  # Perfect fit, no outliers
+
+        z_scores = np.abs(residuals / std_res)
+
+        # Exclude points with |z| > 2.0 (beyond 2 standard deviations)
+        keep = z_scores <= 2.0
+        if keep.all():
+            break  # No outliers found
+
+        # Track which stages were excluded
+        for i, kept in enumerate(keep):
+            if not kept:
+                excluded_stages.append(reg_stages[i].get('stage_num'))
+
+        reg_stages = [s for s, k in zip(reg_stages, keep) if k]
+
+    if len(reg_stages) < 4:
+        return {'value': None, 'slope': None, 'intercept': None,
+                'r2': None, 'n': 0, 'extrapolated': False, 'ci_95': None,
+                'excluded_stages': excluded_stages}
+
+    # Final fit on cleaned data
     x = np.array([s[x_key] for s in reg_stages])
     y = np.array([s['a1_mean'] for s in reg_stages])
 
@@ -1077,7 +1126,8 @@ def _fit_regression_and_solve(stage_data, x_key, threshold):
         return {'value': None, 'slope': round(float(slope), 6),
                 'intercept': round(float(intercept), 4),
                 'r2': round(float(r2), 4), 'n': len(reg_stages),
-                'extrapolated': False, 'ci_95': None}
+                'extrapolated': False, 'ci_95': None,
+                'excluded_stages': excluded_stages}
 
     # Solve: threshold = slope * x_cross + intercept
     x_cross = (threshold - intercept) / slope
@@ -1106,6 +1156,7 @@ def _fit_regression_and_solve(stage_data, x_key, threshold):
         'n': len(reg_stages),
         'extrapolated': extrapolated,
         'ci_95': ci_95,
+        'excluded_stages': excluded_stages,
     }
 
 

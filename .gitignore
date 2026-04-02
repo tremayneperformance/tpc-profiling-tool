@@ -12,6 +12,9 @@ env/
 # Database
 *.db
 
+# Seed/dev scripts
+seed_test_data.py
+
 # IDE
 .vscode/
 .idea/

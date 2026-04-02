@@ -1273,47 +1273,105 @@ function renderThresholds(thr, regP, regH, hrmax, weight, paceData, pfx) {
     return ` <span class="card-pct-hrmax">${((hr / hrmax) * 100).toFixed(1)}% max</span>`;
   }
 
+  // Literature-based uncertainty ranges
+  // HRVT1: ±6% power, ±3 bpm HR (Mateo-March 2023, Zimatore 2021)
+  // HRVT2: ±8% power, ±5 bpm HR — wider when extrapolated (Mateo-March 2023, Rogers 2021)
+  function powerRange(val, pctErr) {
+    if (!val) return '';
+    const lo = Math.round(val * (1 - pctErr));
+    const hi = Math.round(val * (1 + pctErr));
+    return `${lo}\u2013${hi} W`;
+  }
+  function hrRange(val, bpmErr) {
+    if (!val) return '';
+    const lo = Math.round(val - bpmErr);
+    const hi = Math.round(val + bpmErr);
+    return `${lo}\u2013${hi} bpm`;
+  }
+  function paceRange(speedVal, pctErr) {
+    if (!speedVal || speedVal <= 0) return '';
+    const loSpeed = speedVal * (1 + pctErr);  // faster = higher speed
+    const hiSpeed = speedVal * (1 - pctErr);  // slower = lower speed
+    const loPace = formatPaceFromSpeed(loSpeed);
+    const hiPace = formatPaceFromSpeed(hiSpeed);
+    return `${loPace}\u2013${hiPace}/km`;
+  }
+  function formatPaceFromSpeed(ms) {
+    if (!ms || ms <= 0) return '--:--';
+    const sec = 1000.0 / ms;
+    const m = Math.floor(sec / 60);
+    const s = Math.round(sec % 60);
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
+  // Error margins from literature
+  const hrvt1_pwr_err = 0.06;   // ±6% (Mateo-March 2023; Zimatore 2021)
+  const hrvt1_hr_err = 3;       // ±3 bpm
+  const hrvt2_pwr_err = thr.hrvt2_extrapolated ? 0.10 : 0.08;  // ±8-10% (wider when extrapolated)
+  const hrvt2_hr_err = thr.hrvt2_extrapolated ? 6 : 5;          // ±5-6 bpm
+
+  function rangeRow(pwrVal, hrVal, pctErr, bpmErr, speedVal) {
+    const parts = [];
+    if (isRun && speedVal) {
+      parts.push(paceRange(speedVal, pctErr));
+    } else if (pwrVal) {
+      parts.push(powerRange(pwrVal, pctErr));
+    }
+    if (hrVal) parts.push(hrRange(hrVal, bpmErr));
+    if (!parts.length) return '';
+    return `<div class="card-range">Range: ${parts.join(' · ')}</div>`;
+  }
+
+  const rangeRef = '<div class="card-range-ref">Mateo-March 2023; Zimatore 2021; Rogers 2021</div>';
+
   if (isRun) {
     cards.innerHTML = `
       <div class="card" style="border-left-color:#3b82f6">
         <div class="card-label">HRVT1 Standard</div>
         <div class="card-value">${paceData.hrvt1s_pace || '--:--'}/km</div>
         <div class="card-unit">${thr.hrvt1s_power ? thr.hrvt1s_power.toFixed(2) + ' m/s' : ''} &middot; ${thr.hrvt1s_hr ? thr.hrvt1s_hr + ' bpm' : ''}${pctTag(thr.hrvt1s_hr)}</div>
+        ${rangeRow(thr.hrvt1s_power, thr.hrvt1s_hr, hrvt1_pwr_err, hrvt1_hr_err, thr.hrvt1s_power)}
         <div class="card-note">&alpha;1 = 0.75</div>
       </div>
       <div class="card" style="border-left-color:#22c55e">
         <div class="card-label">HRVT1 Individualised</div>
         <div class="card-value">${paceData.hrvt1c_pace || '--:--'}/km</div>
         <div class="card-unit">${thr.hrvt1c_power ? thr.hrvt1c_power.toFixed(2) + ' m/s' : ''} &middot; ${thr.hrvt1c_hr ? thr.hrvt1c_hr + ' bpm' : ''}${pctTag(thr.hrvt1c_hr)}</div>
+        ${rangeRow(thr.hrvt1c_power, thr.hrvt1c_hr, hrvt1_pwr_err, hrvt1_hr_err, thr.hrvt1c_power)}
         <div class="card-note">&alpha;1 = ${thr.a1_star || '?'} (Rogers 2024)</div>
       </div>
       <div class="card" style="border-left-color:#ef4444">
         <div class="card-label">HRVT2 / Threshold</div>
         <div class="card-value">${paceData.hrvt2_pace || '--:--'}/km</div>
         <div class="card-unit">${thr.hrvt2_power ? thr.hrvt2_power.toFixed(2) + ' m/s' : ''} &middot; ${thr.hrvt2_hr ? thr.hrvt2_hr + ' bpm' : ''}${pctTag(thr.hrvt2_hr)}</div>
+        ${rangeRow(thr.hrvt2_power, thr.hrvt2_hr, hrvt2_pwr_err, hrvt2_hr_err, thr.hrvt2_power)}
         <div class="card-note">&alpha;1 = 0.50 &middot; ${extLabel}</div>
-      </div>`;
+      </div>
+      ${rangeRef}`;
   } else {
-    const ciText = thr.hrvt2_ci_95 ? ` (95% CI: ${thr.hrvt2_ci_95[0]}\u2013${thr.hrvt2_ci_95[1]}W)` : '';
     cards.innerHTML = `
       <div class="card" style="border-left-color:#3b82f6">
         <div class="card-label">HRVT1 Standard</div>
         <div class="card-value">${thr.hrvt1s_power ? thr.hrvt1s_power + ' W' : '&mdash;'}${wkgTag(thr.hrvt1s_power, weight)}</div>
         <div class="card-unit">${thr.hrvt1s_hr ? thr.hrvt1s_hr + ' bpm' : ''}${pctTag(thr.hrvt1s_hr)}</div>
+        ${rangeRow(thr.hrvt1s_power, thr.hrvt1s_hr, hrvt1_pwr_err, hrvt1_hr_err)}
         <div class="card-note">&alpha;1 = 0.75</div>
       </div>
       <div class="card" style="border-left-color:#22c55e">
         <div class="card-label">HRVT1 Individualised</div>
         <div class="card-value">${thr.hrvt1c_power ? thr.hrvt1c_power + ' W' : '&mdash;'}${wkgTag(thr.hrvt1c_power, weight)}</div>
         <div class="card-unit">${thr.hrvt1c_hr ? thr.hrvt1c_hr + ' bpm' : ''}${pctTag(thr.hrvt1c_hr)}</div>
+        ${rangeRow(thr.hrvt1c_power, thr.hrvt1c_hr, hrvt1_pwr_err, hrvt1_hr_err)}
         <div class="card-note">&alpha;1 = ${thr.a1_star || '?'} (Rogers 2024)</div>
       </div>
       <div class="card" style="border-left-color:#ef4444">
         <div class="card-label">HRVT2 / FTP</div>
         <div class="card-value">${thr.hrvt2_power ? thr.hrvt2_power + ' W' : '&mdash;'}${wkgTag(thr.hrvt2_power, weight)}</div>
-        <div class="card-unit">${thr.hrvt2_hr ? thr.hrvt2_hr + ' bpm' : ''}${pctTag(thr.hrvt2_hr)}${ciText}</div>
+        <div class="card-unit">${thr.hrvt2_hr ? thr.hrvt2_hr + ' bpm' : ''}${pctTag(thr.hrvt2_hr)}</div>
+        ${rangeRow(thr.hrvt2_power, thr.hrvt2_hr, hrvt2_pwr_err, hrvt2_hr_err)}
         <div class="card-note">&alpha;1 = 0.50 &middot; ${extLabel}</div>
-      </div>`;
+      </div>
+      ${rangeRef}`;
   }
 }
 

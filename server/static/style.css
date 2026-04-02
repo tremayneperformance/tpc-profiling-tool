@@ -639,6 +639,21 @@ header h1 {
 .card-pct-hrmax { color: #f59e0b; font-weight: 600; margin-left: 0.3rem; }
 .card-wkg { font-size: 0.72rem; font-weight: 600; color: #38bdf8; margin-left: 0.4rem; }
 .card-note  { font-size: 0.72rem; color: #444; margin-top: 0.2rem; }
+.card-range {
+  font-size: 0.7rem;
+  color: #4b5563;
+  margin-top: 0.25rem;
+  font-style: italic;
+  letter-spacing: 0.01em;
+}
+.card-range-ref {
+  font-size: 0.62rem;
+  color: #374151;
+  margin-top: 0.6rem;
+  font-style: italic;
+  text-align: right;
+  opacity: 0.6;
+}
 .card-proximity {
   font-size: 0.75rem;
   color: #9ca3af;

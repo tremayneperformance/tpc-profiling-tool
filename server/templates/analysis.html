@@ -1198,7 +1198,7 @@ function renderAllResults(data, sport) {
 
   buildMetaRow(data, pfx);
   renderWarnings(data.warnings, pfx);
-  renderThresholds(data.thresholds, data.regression_power, data.regression_hr, hrmax, weightKg, isRun ? data.pace_data : null, pfx);
+  renderThresholds(data.thresholds, data.regression_power, data.regression_hr, hrmax, weightKg, isRun ? data.pace_data : null, pfx, data);
   renderInsights(data, weightKg, pfx, isRun);
 
   const chartTitle = document.getElementById(pfx + 'chart-power-title');
@@ -1263,7 +1263,7 @@ function renderWarnings(warnings, pfx) {
 // ═══════════════════════════════════════════════════════════════════
 // THRESHOLD DISPLAY
 // ═══════════════════════════════════════════════════════════════════
-function renderThresholds(thr, regP, regH, hrmax, weight, paceData, pfx) {
+function renderThresholds(thr, regP, regH, hrmax, weight, paceData, pfx, fullData) {
   const cards = document.getElementById(pfx + 'threshold-cards');
   const extLabel = thr.hrvt2_extrapolated ? 'Extrapolated' : 'Direct';
   const isRun = !!paceData;
@@ -1273,9 +1273,79 @@ function renderThresholds(thr, regP, regH, hrmax, weight, paceData, pfx) {
     return ` <span class="card-pct-hrmax">${((hr / hrmax) * 100).toFixed(1)}% max</span>`;
   }
 
-  // Literature-based uncertainty ranges
-  // HRVT1: ±6% power, ±3 bpm HR (Mateo-March 2023, Zimatore 2021)
-  // HRVT2: ±8% power, ±5 bpm HR — wider when extrapolated (Mateo-March 2023, Rogers 2021)
+  // ── Data-quality-adjusted confidence scoring ──
+  // Starts from literature base margins, then widens based on test quality.
+  // Factors: R², n stages, artifact rate, warmup stability, monotonicity, extrapolation.
+  // This is purely additive — the analysis engine is untouched.
+
+  const dq = (fullData && fullData.data_quality) || {};
+  const r2 = (regP && regP.r2) || 0;
+  const nStages = (regP && regP.n) || 0;
+  const artRamp = dq.artifact_rate_ramp || 0;
+  const warmupStable = dq.warmup_stable !== false;
+  const rampMonotonic = dq.ramp_monotonic !== false;
+  const hrvSource = (fullData && fullData.hrv_source) || 'hrv';
+
+  // Compute quality multiplier (1.0 = perfect data, higher = worse)
+  function qualityMultiplier(isHrvt2) {
+    let mult = 1.0;
+
+    // R² penalty: widens as R² drops below 0.95
+    if (r2 > 0 && r2 < 0.95) mult += (0.95 - r2) * 3.0;    // e.g. R²=0.85 → +0.30
+    if (r2 > 0 && r2 < 0.80) mult += 0.15;                   // extra penalty below 0.80
+
+    // Stage count: fewer stages = less constrained regression
+    if (nStages > 0 && nStages < 7) mult += (7 - nStages) * 0.04;  // e.g. 4 stages → +0.12
+
+    // Artifact rate: noisy HR data degrades DFA precision
+    if (artRamp > 3) mult += (artRamp - 3) * 0.03;           // e.g. 8% → +0.15
+
+    // Warmup instability: affects α1* calibration (HRVT1c) and baseline
+    if (!warmupStable) mult += 0.08;
+
+    // Poor monotonicity: DFA didn't decline smoothly → regression less reliable
+    if (!rampMonotonic) mult += 0.10;
+
+    // HRVT2 extrapolation already reflected in base margins, but add small penalty
+    if (isHrvt2 && thr.hrvt2_extrapolated) mult += 0.05;
+
+    return Math.min(mult, 2.5);  // Cap at 2.5× base margin
+  }
+
+  const multHrvt1 = qualityMultiplier(false);
+  const multHrvt2 = qualityMultiplier(true);
+
+  // Base literature margins
+  const base_hrvt1s_pwr = 0.06;  // ±6% (Mateo-March 2023; Zimatore 2021)
+  const base_hrvt1s_hr  = 3;     // ±3 bpm
+  const base_hrvt1c_pwr = 0.04;  // ±4% (Rogers 2024 — individualised tighter agreement)
+  const base_hrvt1c_hr  = 2;     // ±2 bpm
+  const base_hrvt2_pwr  = thr.hrvt2_extrapolated ? 0.10 : 0.08;  // ±8-10%
+  const base_hrvt2_hr   = thr.hrvt2_extrapolated ? 6 : 5;
+
+  // Adjusted margins
+  const hrvt1s_pwr_err = base_hrvt1s_pwr * multHrvt1;
+  const hrvt1s_hr_err  = Math.round(base_hrvt1s_hr * multHrvt1);
+  const hrvt1c_pwr_err = base_hrvt1c_pwr * multHrvt1;
+  const hrvt1c_hr_err  = Math.round(base_hrvt1c_hr * multHrvt1);
+  const hrvt2_pwr_err  = base_hrvt2_pwr * multHrvt2;
+  const hrvt2_hr_err   = Math.round(base_hrvt2_hr * multHrvt2);
+
+  // Confidence label based on quality multiplier
+  function confidenceLabel(mult) {
+    if (mult <= 1.05) return { text: 'High', cls: 'conf-high' };
+    if (mult <= 1.25) return { text: 'Good', cls: 'conf-good' };
+    if (mult <= 1.60) return { text: 'Moderate', cls: 'conf-mod' };
+    return { text: 'Low', cls: 'conf-low' };
+  }
+  const conf1 = confidenceLabel(multHrvt1);
+  const conf2 = confidenceLabel(multHrvt2);
+
+  function confTag(conf) {
+    return `<span class="card-conf ${conf.cls}">${conf.text} precision</span>`;
+  }
+
+  // Formatting helpers
   function powerRange(val, pctErr) {
     if (!val) return '';
     const lo = Math.round(val * (1 - pctErr));
@@ -1290,11 +1360,9 @@ function renderThresholds(thr, regP, regH, hrmax, weight, paceData, pfx) {
   }
   function paceRange(speedVal, pctErr) {
     if (!speedVal || speedVal <= 0) return '';
-    const loSpeed = speedVal * (1 + pctErr);  // faster = higher speed
-    const hiSpeed = speedVal * (1 - pctErr);  // slower = lower speed
-    const loPace = formatPaceFromSpeed(loSpeed);
-    const hiPace = formatPaceFromSpeed(hiSpeed);
-    return `${loPace}\u2013${hiPace}/km`;
+    const loSpeed = speedVal * (1 + pctErr);
+    const hiSpeed = speedVal * (1 - pctErr);
+    return `${formatPaceFromSpeed(loSpeed)}\u2013${formatPaceFromSpeed(hiSpeed)}/km`;
   }
   function formatPaceFromSpeed(ms) {
     if (!ms || ms <= 0) return '--:--';
@@ -1303,18 +1371,6 @@ function renderThresholds(thr, regP, regH, hrmax, weight, paceData, pfx) {
     const s = Math.round(sec % 60);
     return m + ':' + String(s).padStart(2, '0');
   }
-
-  // Error margins from literature
-  // HRVT1s (fixed α1=0.75): ±6% power, ±3 bpm — population-level cutoff (Mateo-March 2023; Zimatore 2021)
-  const hrvt1s_pwr_err = 0.06;
-  const hrvt1s_hr_err = 3;
-  // HRVT1c (individualised α1*): ±4% power, ±2 bpm — tighter agreement due to
-  // per-athlete calibration from warmup baseline, reducing inter-individual error (Rogers 2024)
-  const hrvt1c_pwr_err = 0.04;
-  const hrvt1c_hr_err = 2;
-  // HRVT2 (α1=0.50): ±8-10% power, ±5-6 bpm — wider uncertainty, especially when extrapolated
-  const hrvt2_pwr_err = thr.hrvt2_extrapolated ? 0.10 : 0.08;
-  const hrvt2_hr_err = thr.hrvt2_extrapolated ? 6 : 5;
 
   function rangeRow(pwrVal, hrVal, pctErr, bpmErr, speedVal) {
     const parts = [];
@@ -1325,29 +1381,29 @@ function renderThresholds(thr, regP, regH, hrmax, weight, paceData, pfx) {
     }
     if (hrVal) parts.push(hrRange(hrVal, bpmErr));
     if (!parts.length) return '';
-    return `<div class="card-range">Range: ${parts.join(' · ')}</div>`;
+    return `<div class="card-range">Range: ${parts.join(' \u00b7 ')}</div>`;
   }
 
-  const rangeRef = '<div class="card-range-ref">Mateo-March 2023; Zimatore 2021; Rogers 2021, 2024</div>';
+  const rangeRef = '<div class="card-range-ref">Ranges adjusted from Mateo-March 2023; Zimatore 2021; Rogers 2021, 2024</div>';
 
   if (isRun) {
     cards.innerHTML = `
       <div class="card" style="border-left-color:#3b82f6">
-        <div class="card-label">HRVT1 Standard</div>
+        <div class="card-label">HRVT1 Standard ${confTag(conf1)}</div>
         <div class="card-value">${paceData.hrvt1s_pace || '--:--'}/km</div>
         <div class="card-unit">${thr.hrvt1s_power ? thr.hrvt1s_power.toFixed(2) + ' m/s' : ''} &middot; ${thr.hrvt1s_hr ? thr.hrvt1s_hr + ' bpm' : ''}${pctTag(thr.hrvt1s_hr)}</div>
         ${rangeRow(thr.hrvt1s_power, thr.hrvt1s_hr, hrvt1s_pwr_err, hrvt1s_hr_err, thr.hrvt1s_power)}
         <div class="card-note">&alpha;1 = 0.75</div>
       </div>
       <div class="card" style="border-left-color:#22c55e">
-        <div class="card-label">HRVT1 Individualised</div>
+        <div class="card-label">HRVT1 Individualised ${confTag(conf1)}</div>
         <div class="card-value">${paceData.hrvt1c_pace || '--:--'}/km</div>
         <div class="card-unit">${thr.hrvt1c_power ? thr.hrvt1c_power.toFixed(2) + ' m/s' : ''} &middot; ${thr.hrvt1c_hr ? thr.hrvt1c_hr + ' bpm' : ''}${pctTag(thr.hrvt1c_hr)}</div>
         ${rangeRow(thr.hrvt1c_power, thr.hrvt1c_hr, hrvt1c_pwr_err, hrvt1c_hr_err, thr.hrvt1c_power)}
         <div class="card-note">&alpha;1 = ${thr.a1_star || '?'} (Rogers 2024)</div>
       </div>
       <div class="card" style="border-left-color:#ef4444">
-        <div class="card-label">HRVT2 / Threshold</div>
+        <div class="card-label">HRVT2 / Threshold ${confTag(conf2)}</div>
         <div class="card-value">${paceData.hrvt2_pace || '--:--'}/km</div>
         <div class="card-unit">${thr.hrvt2_power ? thr.hrvt2_power.toFixed(2) + ' m/s' : ''} &middot; ${thr.hrvt2_hr ? thr.hrvt2_hr + ' bpm' : ''}${pctTag(thr.hrvt2_hr)}</div>
         ${rangeRow(thr.hrvt2_power, thr.hrvt2_hr, hrvt2_pwr_err, hrvt2_hr_err, thr.hrvt2_power)}
@@ -1357,21 +1413,21 @@ function renderThresholds(thr, regP, regH, hrmax, weight, paceData, pfx) {
   } else {
     cards.innerHTML = `
       <div class="card" style="border-left-color:#3b82f6">
-        <div class="card-label">HRVT1 Standard</div>
+        <div class="card-label">HRVT1 Standard ${confTag(conf1)}</div>
         <div class="card-value">${thr.hrvt1s_power ? thr.hrvt1s_power + ' W' : '&mdash;'}${wkgTag(thr.hrvt1s_power, weight)}</div>
         <div class="card-unit">${thr.hrvt1s_hr ? thr.hrvt1s_hr + ' bpm' : ''}${pctTag(thr.hrvt1s_hr)}</div>
         ${rangeRow(thr.hrvt1s_power, thr.hrvt1s_hr, hrvt1s_pwr_err, hrvt1s_hr_err)}
         <div class="card-note">&alpha;1 = 0.75</div>
       </div>
       <div class="card" style="border-left-color:#22c55e">
-        <div class="card-label">HRVT1 Individualised</div>
+        <div class="card-label">HRVT1 Individualised ${confTag(conf1)}</div>
         <div class="card-value">${thr.hrvt1c_power ? thr.hrvt1c_power + ' W' : '&mdash;'}${wkgTag(thr.hrvt1c_power, weight)}</div>
         <div class="card-unit">${thr.hrvt1c_hr ? thr.hrvt1c_hr + ' bpm' : ''}${pctTag(thr.hrvt1c_hr)}</div>
         ${rangeRow(thr.hrvt1c_power, thr.hrvt1c_hr, hrvt1c_pwr_err, hrvt1c_hr_err)}
         <div class="card-note">&alpha;1 = ${thr.a1_star || '?'} (Rogers 2024)</div>
       </div>
       <div class="card" style="border-left-color:#ef4444">
-        <div class="card-label">HRVT2 / FTP</div>
+        <div class="card-label">HRVT2 / FTP ${confTag(conf2)}</div>
         <div class="card-value">${thr.hrvt2_power ? thr.hrvt2_power + ' W' : '&mdash;'}${wkgTag(thr.hrvt2_power, weight)}</div>
         <div class="card-unit">${thr.hrvt2_hr ? thr.hrvt2_hr + ' bpm' : ''}${pctTag(thr.hrvt2_hr)}</div>
         ${rangeRow(thr.hrvt2_power, thr.hrvt2_hr, hrvt2_pwr_err, hrvt2_hr_err)}

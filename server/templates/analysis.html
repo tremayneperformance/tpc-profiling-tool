@@ -11,6 +11,19 @@
 </head>
 <body>
 
+<!-- NAV BAR -->
+<nav class="top-nav">
+  <div class="top-nav-inner">
+    <a href="/" class="top-nav-brand">TPC</a>
+    <div class="top-nav-links">
+      <a href="/">Test Tool</a>
+      <a href="/analysis" class="active">Analysis</a>
+      <a href="/admin">Data</a>
+    </div>
+    <button id="nav-logout" class="top-nav-logout" onclick="localStorage.removeItem('auth_token');window.location='/';">Logout</button>
+  </div>
+</nav>
+
 <div class="container">
 
   <!-- HEADER -->

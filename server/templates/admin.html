@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Data Browser | Tremayne Performance</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- NAV BAR -->
+<nav class="top-nav">
+  <div class="top-nav-inner">
+    <a href="/" class="top-nav-brand">TPC</a>
+    <div class="top-nav-links">
+      <a href="/">Test Tool</a>
+      <a href="/analysis">Analysis</a>
+      <a href="/admin" class="active">Data</a>
+    </div>
+    <button id="nav-logout" class="top-nav-logout">Logout</button>
+  </div>
+</nav>
+
+<div class="container" style="padding-top: 1rem;">
+
+  <!-- AUTH GATE -->
+  <div id="auth-gate" style="max-width:400px;margin:4rem auto;">
+    <div class="card" style="padding:2rem;">
+      <h2 style="font-family:'Montserrat',sans-serif;margin-bottom:1rem;">Coach Login</h2>
+      <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1.5rem;">
+        Enter the dev password or coach credentials to access data.
+      </p>
+      <div class="input-group" style="margin-bottom:1rem;">
+        <label for="auth-password">Password</label>
+        <input type="password" id="auth-password" placeholder="Dev password" />
+      </div>
+      <button id="auth-login-btn" class="btn-primary" style="width:100%;">Login</button>
+      <p id="auth-error" style="color:#ef4444;font-size:0.8rem;margin-top:0.75rem;display:none;"></p>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT (hidden until auth) -->
+  <div id="admin-content" style="display:none;">
+
+    <header style="margin-bottom:1.5rem;">
+      <h1>Tremayne Performance</h1>
+      <p class="header-subtitle">Data Browser</p>
+    </header>
+
+    <!-- STATS CARDS -->
+    <div id="stats-grid" class="stats-grid" style="margin-bottom:2rem;">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-users">-</div>
+        <div class="stat-label">Total Users</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-athletes">-</div>
+        <div class="stat-label">Athletes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-approved">-</div>
+        <div class="stat-label">Approved</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-sessions">-</div>
+        <div class="stat-label">Test Sessions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-records">-</div>
+        <div class="stat-label">Data Points</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-rr">-</div>
+        <div class="stat-label">RR Intervals</div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-tab="users">Users</button>
+      <button class="admin-tab" data-tab="sessions">Test Sessions</button>
+    </div>
+
+    <!-- USERS TABLE -->
+    <section id="tab-users" class="admin-tab-content">
+      <table class="admin-table" id="users-table">
+        <thead>
+          <tr>
+            <th style="width:40px">ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th style="width:70px">Role</th>
+            <th style="width:75px">Approved</th>
+            <th style="width:80px">Weight</th>
+            <th style="width:70px">HR Bike</th>
+            <th style="width:70px">HR Run</th>
+            <th style="width:90px">Threshold</th>
+            <th style="width:130px">Last Login</th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody"></tbody>
+      </table>
+      <p id="users-empty" class="empty-msg" style="display:none;">No users found.</p>
+    </section>
+
+    <!-- SESSIONS TABLE -->
+    <section id="tab-sessions" class="admin-tab-content" style="display:none;">
+      <table class="admin-table" id="sessions-table">
+        <thead>
+          <tr>
+            <th style="width:40px">ID</th>
+            <th>Athlete</th>
+            <th style="width:60px">Sport</th>
+            <th style="width:130px">Date</th>
+            <th style="width:80px">Duration</th>
+            <th style="width:60px">Stages</th>
+            <th style="width:70px">Peak W</th>
+            <th style="width:70px">Peak HR</th>
+            <th style="width:75px">Artifact%</th>
+            <th style="width:70px">Quality</th>
+            <th style="width:70px">Records</th>
+            <th style="width:70px">RR</th>
+            <th style="width:80px">Analysed</th>
+          </tr>
+        </thead>
+        <tbody id="sessions-tbody"></tbody>
+      </table>
+      <p id="sessions-empty" class="empty-msg" style="display:none;">No test sessions found.</p>
+    </section>
+
+    <!-- SESSION DETAIL MODAL -->
+    <div id="session-modal" class="modal-overlay" style="display:none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modal-title">Session Detail</h3>
+          <button id="modal-close" class="modal-close-btn">&times;</button>
+        </div>
+        <div id="modal-body" class="modal-body"></div>
+      </div>
+    </div>
+
+  </div><!-- /admin-content -->
+</div><!-- /container -->
+
+<script>
+(function() {
+  // ------- AUTH -------
+  let token = localStorage.getItem('auth_token');
+
+  function showAuth() {
+    document.getElementById('auth-gate').style.display = '';
+    document.getElementById('admin-content').style.display = 'none';
+  }
+  function showContent() {
+    document.getElementById('auth-gate').style.display = 'none';
+    document.getElementById('admin-content').style.display = '';
+    loadAll();
+  }
+
+  async function checkToken() {
+    if (!token) return showAuth();
+    try {
+      const resp = await fetch('/api/auth/me', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      const data = await resp.json();
+      if (data.status === 'ok' && data.user.role === 'coach') {
+        showContent();
+      } else {
+        showAuth();
+      }
+    } catch {
+      showAuth();
+    }
+  }
+
+  document.getElementById('auth-login-btn').addEventListener('click', async () => {
+    const pw = document.getElementById('auth-password').value.trim();
+    const errEl = document.getElementById('auth-error');
+    errEl.style.display = 'none';
+    if (!pw) return;
+    try {
+      const resp = await fetch('/api/auth/dev-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      });
+      const data = await resp.json();
+      if (data.status === 'ok') {
+        token = data.token;
+        localStorage.setItem('auth_token', token);
+        showContent();
+      } else {
+        errEl.textContent = data.message || 'Login failed.';
+        errEl.style.display = '';
+      }
+    } catch {
+      errEl.textContent = 'Network error.';
+      errEl.style.display = '';
+    }
+  });
+
+  document.getElementById('auth-password').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('auth-login-btn').click();
+  });
+
+  document.getElementById('nav-logout').addEventListener('click', () => {
+    token = null;
+    localStorage.removeItem('auth_token');
+    showAuth();
+  });
+
+  // ------- API HELPERS -------
+  function api(url) {
+    return fetch(url, { headers: { 'Authorization': 'Bearer ' + token } }).then(r => r.json());
+  }
+
+  function fmt(val, fallback) { return val != null ? val : (fallback || '-'); }
+
+  function fmtDate(iso) {
+    if (!iso) return '-';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+      + ' ' + d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+  }
+
+  function fmtDuration(sec) {
+    if (!sec) return '-';
+    const m = Math.floor(sec / 60);
+    const s = Math.round(sec % 60);
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
+  function fmtNumber(n) {
+    if (n == null) return '-';
+    return n.toLocaleString();
+  }
+
+  // ------- LOAD DATA -------
+  async function loadAll() {
+    loadStats();
+    loadUsers();
+    loadSessions();
+  }
+
+  async function loadStats() {
+    try {
+      const data = await api('/api/admin/stats');
+      if (data.status !== 'ok') return;
+      const s = data.stats;
+      document.getElementById('stat-users').textContent = fmtNumber(s.total_users);
+      document.getElementById('stat-athletes').textContent = fmtNumber(s.total_athletes);
+      document.getElementById('stat-approved').textContent = fmtNumber(s.approved_athletes);
+      document.getElementById('stat-sessions').textContent = fmtNumber(s.total_sessions);
+      document.getElementById('stat-records').textContent = fmtNumber(s.total_records);
+      document.getElementById('stat-rr').textContent = fmtNumber(s.total_rr_intervals);
+    } catch(e) { console.error('Stats load failed', e); }
+  }
+
+  async function loadUsers() {
+    try {
+      const data = await api('/api/admin/all-users');
+      if (data.status !== 'ok') return;
+      const tbody = document.getElementById('users-tbody');
+      const empty = document.getElementById('users-empty');
+      if (!data.users.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+      empty.style.display = 'none';
+      tbody.innerHTML = data.users.map(u => `<tr>
+        <td>${u.id}</td>
+        <td>${esc(u.name)}</td>
+        <td>${esc(u.email)}</td>
+        <td><span class="badge badge-${u.role}">${u.role}</span></td>
+        <td>${u.role === 'coach' ? '-' : (u.approved ? '<span class="badge badge-yes">Yes</span>' : '<span class="badge badge-no">No</span>')}</td>
+        <td>${fmt(u.weight_kg)}</td>
+        <td>${fmt(u.hrmax_bike)}</td>
+        <td>${fmt(u.hrmax_run)}</td>
+        <td>${u.threshold_power ? u.threshold_power + ' W' : (u.threshold_pace || '-')}</td>
+        <td>${fmtDate(u.last_login)}</td>
+      </tr>`).join('');
+    } catch(e) { console.error('Users load failed', e); }
+  }
+
+  async function loadSessions() {
+    try {
+      const data = await api('/api/admin/all-sessions');
+      if (data.status !== 'ok') return;
+      const tbody = document.getElementById('sessions-tbody');
+      const empty = document.getElementById('sessions-empty');
+      if (!data.sessions.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+      empty.style.display = 'none';
+      tbody.innerHTML = data.sessions.map(s => `<tr class="clickable-row" data-sid="${s.id}">
+        <td>${s.id}</td>
+        <td>${esc(s.athlete_name)}</td>
+        <td><span class="badge badge-${s.sport}">${s.sport}</span></td>
+        <td>${fmtDate(s.test_date)}</td>
+        <td>${fmtDuration(s.duration_sec)}</td>
+        <td>${fmt(s.stages_completed)}</td>
+        <td>${fmt(s.peak_power)}</td>
+        <td>${fmt(s.peak_hr)}</td>
+        <td>${s.artifact_pct != null ? s.artifact_pct.toFixed(1) + '%' : '-'}</td>
+        <td>${s.quality ? '<span class="badge badge-' + s.quality + '">' + s.quality + '</span>' : '-'}</td>
+        <td>${fmtNumber(s.record_count)}</td>
+        <td>${fmtNumber(s.rr_count)}</td>
+        <td>${s.archetype ? '<span class="badge badge-yes">Yes</span>' : '<span class="badge badge-no">No</span>'}</td>
+      </tr>`).join('');
+
+      // Click to open detail
+      tbody.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', () => openSessionDetail(row.dataset.sid));
+      });
+    } catch(e) { console.error('Sessions load failed', e); }
+  }
+
+  // ------- SESSION DETAIL MODAL -------
+  async function openSessionDetail(sid) {
+    const modal = document.getElementById('session-modal');
+    const body = document.getElementById('modal-body');
+    const title = document.getElementById('modal-title');
+    body.innerHTML = '<p style="color:var(--text-secondary);">Loading...</p>';
+    modal.style.display = 'flex';
+
+    try {
+      const data = await api('/api/admin/session/' + sid + '/detail');
+      if (data.status !== 'ok') { body.innerHTML = '<p style="color:#ef4444;">Error loading session.</p>'; return; }
+      const s = data.session;
+      title.textContent = 'Session #' + s.id + ' — ' + (s.athlete_name || 'Unknown');
+
+      let html = '<div class="detail-grid">';
+      html += detailItem('Athlete', s.athlete_name + ' (' + s.athlete_email + ')');
+      html += detailItem('Sport', s.sport);
+      html += detailItem('Date', fmtDate(s.test_date));
+      html += detailItem('Duration', fmtDuration(s.duration_sec));
+      html += detailItem('Stages', fmt(s.stages_completed));
+      html += detailItem('Peak Power', fmt(s.peak_power) + (s.peak_power ? ' W' : ''));
+      html += detailItem('Peak HR', fmt(s.peak_hr) + (s.peak_hr ? ' bpm' : ''));
+      html += detailItem('Artifact %', s.artifact_pct != null ? s.artifact_pct.toFixed(1) + '%' : '-');
+      html += detailItem('Quality', fmt(s.quality));
+      html += detailItem('Data Points', fmtNumber(s.record_count));
+      html += detailItem('RR Intervals', fmtNumber(s.rr_count));
+      html += detailItem('Threshold Value', fmt(s.threshold_value));
+      html += detailItem('HRmax', fmt(s.hrmax));
+      html += detailItem('Weight', s.weight_kg ? s.weight_kg + ' kg' : '-');
+      html += '</div>';
+
+      // Analysis results
+      if (s.archetype) {
+        html += '<h4 style="margin:1.5rem 0 0.75rem;color:var(--accent);">Analysis Results</h4>';
+        html += '<div class="detail-grid">';
+        html += detailItem('Archetype', s.archetype);
+        html += detailItem('HRVT1s', (s.hrvt1s_power ? s.hrvt1s_power + ' W' : '-') + ' / ' + (s.hrvt1s_hr ? s.hrvt1s_hr + ' bpm' : '-'));
+        html += detailItem('HRVT1c', (s.hrvt1c_power ? s.hrvt1c_power + ' W' : '-') + ' / ' + (s.hrvt1c_hr ? s.hrvt1c_hr + ' bpm' : '-'));
+        html += detailItem('HRVT2', (s.hrvt2_power ? s.hrvt2_power + ' W' : '-') + ' / ' + (s.hrvt2_hr ? s.hrvt2_hr + ' bpm' : '-'));
+        html += '</div>';
+      }
+
+      // Early ramp end
+      if (s.early_ramp_end) {
+        html += '<h4 style="margin:1.5rem 0 0.75rem;color:var(--accent);">Early Ramp Termination</h4>';
+        html += '<pre class="detail-pre">' + esc(typeof s.early_ramp_end === 'string' ? s.early_ramp_end : JSON.stringify(s.early_ramp_end, null, 2)) + '</pre>';
+      }
+
+      // Sample records
+      if (s.sample_records && s.sample_records.length) {
+        html += '<h4 style="margin:1.5rem 0 0.75rem;color:var(--accent);">Sample Data (first 50 records)</h4>';
+        html += '<div style="overflow-x:auto;"><table class="admin-table compact">';
+        html += '<thead><tr><th>Time</th><th>Power</th><th>HR</th><th>Cadence</th><th>Phase</th><th>Stage</th></tr></thead><tbody>';
+        s.sample_records.forEach(r => {
+          html += `<tr>
+            <td>${fmtDuration(r.elapsed_sec)}</td>
+            <td>${fmt(r.power)}</td>
+            <td>${fmt(r.heart_rate)}</td>
+            <td>${fmt(r.cadence)}</td>
+            <td>${fmt(r.phase)}</td>
+            <td>${fmt(r.stage_num)}</td>
+          </tr>`;
+        });
+        html += '</tbody></table></div>';
+      }
+
+      body.innerHTML = html;
+    } catch(e) {
+      body.innerHTML = '<p style="color:#ef4444;">Failed to load: ' + e.message + '</p>';
+    }
+  }
+
+  function detailItem(label, value) {
+    return '<div class="detail-item"><span class="detail-label">' + label + '</span><span class="detail-value">' + value + '</span></div>';
+  }
+
+  document.getElementById('modal-close').addEventListener('click', () => {
+    document.getElementById('session-modal').style.display = 'none';
+  });
+  document.getElementById('session-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
+  });
+
+  // ------- TABS -------
+  document.querySelectorAll('.admin-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.admin-tab-content').forEach(c => c.style.display = 'none');
+      document.getElementById('tab-' + btn.dataset.tab).style.display = '';
+    });
+  });
+
+  // ------- UTIL -------
+  function esc(str) {
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  // ------- INIT -------
+  checkToken();
+})();
+</script>
+
+</body>
+</html>

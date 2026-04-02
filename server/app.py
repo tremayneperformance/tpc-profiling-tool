@@ -844,6 +844,86 @@ def create_app():
             return jsonify({'status': 'error', 'message': f'Report generation failed: {e}'}), 500
 
     # -----------------------------------------------------------------------
+    # ADMIN DATA BROWSER (coach only)
+    # -----------------------------------------------------------------------
+
+    @app.route('/admin')
+    def admin_dashboard():
+        """Serve the admin data browser."""
+        return render_template('admin.html')
+
+    @app.route('/api/admin/all-users', methods=['GET'])
+    @coach_required
+    def all_users():
+        """List all users (athletes and coaches)."""
+        users = User.query.order_by(User.role, User.name).all()
+        return jsonify({'status': 'ok', 'users': [u.to_dict() for u in users]})
+
+    @app.route('/api/admin/all-sessions', methods=['GET'])
+    @coach_required
+    def all_sessions_admin():
+        """List all test sessions with athlete info."""
+        sessions = TestSession.query.order_by(TestSession.test_date.desc()).all()
+        results = []
+        for s in sessions:
+            d = s.to_dict()
+            d['athlete_name'] = s.athlete.name if s.athlete else 'Unknown'
+            d['athlete_email'] = s.athlete.email if s.athlete else ''
+            d['record_count'] = TestRecord.query.filter_by(session_id=s.id).count()
+            d['rr_count'] = RRInterval.query.filter_by(session_id=s.id).count()
+            results.append(d)
+        return jsonify({'status': 'ok', 'sessions': results})
+
+    @app.route('/api/admin/session/<int:session_id>/detail', methods=['GET'])
+    @coach_required
+    def session_detail(session_id):
+        """Get full detail for a single session including record and RR counts."""
+        session = TestSession.query.get(session_id)
+        if not session:
+            return jsonify({'status': 'error', 'message': 'Session not found.'}), 404
+        d = session.to_dict()
+        d['athlete_name'] = session.athlete.name if session.athlete else 'Unknown'
+        d['athlete_email'] = session.athlete.email if session.athlete else ''
+        d['record_count'] = TestRecord.query.filter_by(session_id=session_id).count()
+        d['rr_count'] = RRInterval.query.filter_by(session_id=session_id).count()
+        d['early_ramp_end'] = session.early_ramp_end
+        d['analysis_json'] = session.analysis_json
+        # First 50 records as sample
+        records = TestRecord.query.filter_by(session_id=session_id).order_by(
+            TestRecord.elapsed_sec).limit(50).all()
+        d['sample_records'] = [{
+            'elapsed_sec': r.elapsed_sec,
+            'power': r.power,
+            'heart_rate': r.heart_rate,
+            'cadence': r.cadence,
+            'phase': r.phase,
+            'stage_num': r.stage_num,
+        } for r in records]
+        return jsonify({'status': 'ok', 'session': d})
+
+    @app.route('/api/admin/stats', methods=['GET'])
+    @coach_required
+    def admin_stats():
+        """Dashboard summary stats."""
+        total_users = User.query.count()
+        total_athletes = User.query.filter_by(role='athlete').count()
+        approved_athletes = User.query.filter_by(role='athlete', approved=True).count()
+        total_sessions = TestSession.query.count()
+        total_records = TestRecord.query.count()
+        total_rr = RRInterval.query.count()
+        return jsonify({
+            'status': 'ok',
+            'stats': {
+                'total_users': total_users,
+                'total_athletes': total_athletes,
+                'approved_athletes': approved_athletes,
+                'total_sessions': total_sessions,
+                'total_records': total_records,
+                'total_rr_intervals': total_rr,
+            }
+        })
+
+    # -----------------------------------------------------------------------
     # LEGACY ROUTE ALIASES — so existing analysis dashboard HTML works
     # without rewriting all fetch() calls. All require coach auth.
     # -----------------------------------------------------------------------

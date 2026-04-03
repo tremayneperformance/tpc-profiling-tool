@@ -1474,11 +1474,13 @@ function renderInsights(data, weight, pfx, isRun) {
     if (tteData.conservative) detail += ' (conservative)';
     document.getElementById(pfx + '3min-power-detail').textContent = detail;
     powerCard.hidden = false;
-  } else if (ev.avg_power && !isRun) {
-    const pwrW = Math.round(ev.avg_power);
+  } else if (!isRun && (ev.map_estimated || ev.avg_power)) {
+    const pwrW = Math.round(ev.map_estimated || ev.avg_power);
+    const label = ev.effort_type === 'map_ramp' ? 'MAP' : '3-Min Power';
     document.getElementById(pfx + '3min-power-value').innerHTML = pwrW + ' W' + wkgTag(pwrW, weight);
     let detail = '';
-    if (ev.status) detail += ev.status;
+    if (ev.effort_type === 'map_ramp') detail += 'MAP Ramp';
+    else if (ev.status) detail += ev.status;
     if (ev.duration_sec) detail += ' \u00b7 ' + Math.round(ev.duration_sec) + 's';
     document.getElementById(pfx + '3min-power-detail').textContent = detail;
     powerCard.hidden = false;

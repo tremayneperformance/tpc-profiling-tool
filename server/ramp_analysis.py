@@ -52,6 +52,10 @@ MAX_EFFORT_SUSTAIN_SEC = 60         # Must sustain for 60s
 COOLDOWN_POWER_MULTIPLIER = 1.3     # Drops below warmup × 1.3
 COOLDOWN_SUSTAIN_SEC = 60           # Must stay low for 60s
 
+# MAP ramp correction: ramp-to-failure overestimates sustainable 3-min power
+# by ~5-8%, offset by ~2-5% from prior fatigue. Net correction: 5%.
+MAP_RAMP_CORRECTION = 0.95
+
 # Stage analysis
 STAGE_DISCARD_SEC = 60              # Discard first 60s of each stage (Rogers: 60-90s)
 STAGE_ANALYSIS_SEC = 120            # Use final 120s for DFA a1
@@ -360,10 +364,12 @@ def _detect_ramp_stages(roll_t, roll_v, ramp_start, ramp_end):
 def _detect_max_effort(roll_t, roll_v, ramp_end, ramp_peak_power,
                        raw_times=None, raw_powers=None):
     """
-    Detect 3-min max effort after recovery.
+    Detect max effort after recovery — supports both:
+      - Legacy 3-min flat effort
+      - MAP ramp to failure (increasing power in ~60s steps)
 
-    Uses rolling average to locate the high-power region, then finds
-    the best 180-second window from raw power data for accurate avg.
+    Uses rolling average to locate the high-power region, then
+    classifies as 'ramp' or 'flat' based on power trend.
     Returns (start_sec, end_sec) or None.
     """
     min_start = ramp_end + RECOVERY_GAP_MIN_SEC
@@ -397,33 +403,52 @@ def _detect_max_effort(roll_t, roll_v, ramp_end, ramp_peak_power,
     if region_start is None:
         return None
 
-    # --- Phase 2: best 180s window from raw data in expanded region ---
+    # --- Phase 2: refine boundaries using raw data ---
     if raw_times is not None and raw_powers is not None:
         raw_t = np.asarray(raw_times, dtype=float)
         raw_p = np.asarray(raw_powers, dtype=float)
 
-        # Expand search window: 60s before rolling-detected start,
-        # 30s after rolling-detected end (rolling avg lags real start)
+        # Expand search window
         search_lo = region_start - 60
         search_hi = region_end + 30
         mask = (raw_t >= search_lo) & (raw_t <= search_hi)
         seg_t = raw_t[mask]
         seg_p = raw_p[mask]
 
-        if len(seg_t) >= 120:
-            best_avg = 0.0
-            best_start = region_start
-            # Slide a 180s window across the raw data
-            for i in range(len(seg_t)):
-                win_end = seg_t[i] + 180
-                win_mask = (seg_t >= seg_t[i]) & (seg_t < win_end)
-                win_p = seg_p[win_mask]
-                if len(win_p) >= 120:
-                    avg = float(np.mean(win_p))
-                    if avg > best_avg:
-                        best_avg = avg
-                        best_start = seg_t[i]
-            return (float(best_start), float(best_start + 180))
+        if len(seg_t) >= 30:
+            # Detect if this is a MAP ramp (increasing trend) or flat effort
+            # Split into 60s chunks and check if power increases across chunks
+            chunk_avgs = []
+            for chunk_start in range(0, len(seg_p), 60):
+                chunk = seg_p[chunk_start:chunk_start + 60]
+                if len(chunk) >= 20:
+                    chunk_avgs.append(float(np.mean(chunk)))
+
+            is_ramp = False
+            if len(chunk_avgs) >= 3:
+                # Check if each chunk is higher than the previous (allowing some noise)
+                increases = sum(1 for i in range(1, len(chunk_avgs))
+                                if chunk_avgs[i] > chunk_avgs[i-1] * 0.98)
+                is_ramp = increases >= len(chunk_avgs) - 2  # Most chunks increase
+
+            if is_ramp:
+                # MAP ramp: return full high-power region
+                return (float(seg_t[0] + 60), float(seg_t[-1]))
+            else:
+                # Flat effort: find best 180s window
+                if len(seg_t) >= 120:
+                    best_avg = 0.0
+                    best_start = region_start
+                    for i in range(len(seg_t)):
+                        win_end = seg_t[i] + 180
+                        win_mask = (seg_t >= seg_t[i]) & (seg_t < win_end)
+                        win_p = seg_p[win_mask]
+                        if len(win_p) >= 120:
+                            avg = float(np.mean(win_p))
+                            if avg > best_avg:
+                                best_avg = avg
+                                best_start = seg_t[i]
+                    return (float(best_start), float(best_start + 180))
 
     # Fallback: return the rolling-average boundaries
     return (region_start, region_end)
@@ -1193,16 +1218,16 @@ def analyze_ramp_stages(windows, stages, warmup_end):
     hrvt1s_power_result = _fit_regression_and_solve(stage_data, 'mean_power', 0.75)
     hrvt1s_hr_result = _fit_regression_and_solve(stage_data, 'mean_hr', 0.75)
 
-    # HRVT2 — a1 = 0.50 (= new FTP)
-    hrvt2_power_result = _fit_regression_and_solve(stage_data, 'mean_power', 0.50)
-    hrvt2_hr_result = _fit_regression_and_solve(stage_data, 'mean_hr', 0.50)
+    # HRVT2 — a1 = 0.51 (conservative threshold for safety margin)
+    hrvt2_power_result = _fit_regression_and_solve(stage_data, 'mean_power', 0.51)
+    hrvt2_hr_result = _fit_regression_and_solve(stage_data, 'mean_hr', 0.51)
 
     # HRVT1c — Individualised (Rogers 2024)
     a1_star = None
     hrvt1c_power_result = {'value': None, 'extrapolated': False, 'ci_95': None}
     hrvt1c_hr_result = {'value': None, 'extrapolated': False, 'ci_95': None}
     if a1_max_early is not None:
-        a1_star = round((a1_max_early + 0.50) / 2, 4)
+        a1_star = round((a1_max_early + 0.51) / 2, 4)
         hrvt1c_power_result = _fit_regression_and_solve(
             stage_data, 'mean_power', a1_star)
         hrvt1c_hr_result = _fit_regression_and_solve(
@@ -1341,15 +1366,21 @@ def validate_ramp(stage_data, regression_power, regression_hr):
 def validate_max_effort(powers, heart_rates, max_effort_segment,
                         hrvt2_power, stages):
     """
-    Validate the 3-min max effort segment.
-    Returns dict with status, metrics, and flags.
+    Validate max effort segment — auto-detects MAP ramp vs flat 3-min effort.
+
+    MAP ramp: calculates MAP from last completed step + time fraction.
+    Flat effort: validates duration, pacing, power floor as before.
+
+    Returns dict with status, metrics, effort_type, and flags.
     """
     if max_effort_segment is None:
         return {
             'status': 'ABSENT',
+            'effort_type': None,
             'duration_sec': None,
             'avg_power': None,
             'max_power': None,
+            'map_estimated': None,
             'avg_hr': None,
             'max_hr': None,
             'pacing_ratio': None,
@@ -1360,15 +1391,16 @@ def validate_max_effort(powers, heart_rates, max_effort_segment,
     start, end = max_effort_segment
     duration = end - start
 
-    # Extract effort power data
+    # Extract effort power and HR data
     effort_powers = [p for t, p in powers if start <= t <= end]
     effort_hrs = [h for t, h in heart_rates if start <= t <= end]
 
     if not effort_powers:
         return {
             'status': 'INVALID',
+            'effort_type': None,
             'duration_sec': round(duration, 1),
-            'avg_power': None, 'max_power': None,
+            'avg_power': None, 'max_power': None, 'map_estimated': None,
             'avg_hr': None, 'max_hr': None,
             'pacing_ratio': None, 'power_cv': None,
             'flags': ['No power data in max effort segment.'],
@@ -1379,82 +1411,157 @@ def validate_max_effort(powers, heart_rates, max_effort_segment,
     avg_hr = float(np.mean(effort_hrs)) if effort_hrs else None
     max_hr = float(np.max(effort_hrs)) if effort_hrs else None
 
+    # --- Detect effort type: MAP ramp vs flat ---
+    # Split into 60s chunks and check for increasing power trend
+    chunk_avgs = []
+    chunk_size = 60
+    for i in range(0, len(effort_powers), chunk_size):
+        chunk = effort_powers[i:i + chunk_size]
+        if len(chunk) >= 20:
+            chunk_avgs.append(float(np.mean(chunk)))
+
+    is_ramp = False
+    if len(chunk_avgs) >= 3:
+        increases = sum(1 for i in range(1, len(chunk_avgs))
+                        if chunk_avgs[i] > chunk_avgs[i-1] * 0.98)
+        is_ramp = increases >= len(chunk_avgs) - 2
+
+    effort_type = 'map_ramp' if is_ramp else 'flat_effort'
     flags = []
+    map_estimated = None
 
-    # Duration check
-    if duration < EFFORT_DUR_MIN_FLAGGED:
-        flags.append(f'Effort duration ({duration:.0f}s) too short '
-                     f'(minimum {EFFORT_DUR_MIN_FLAGGED}s).')
-        dur_status = 'INVALID'
-    elif duration < EFFORT_DUR_MIN_VALID:
-        flags.append(f'Effort duration ({duration:.0f}s) slightly short '
-                     f'(optimal {EFFORT_DUR_MIN_VALID}-{EFFORT_DUR_MAX_VALID}s).')
-        dur_status = 'FLAGGED'
-    elif duration > EFFORT_DUR_MAX_VALID:
-        flags.append(f'Effort duration ({duration:.0f}s) longer than expected '
-                     f'(max {EFFORT_DUR_MAX_VALID}s).')
-        dur_status = 'FLAGGED'
-    else:
-        dur_status = 'VALID'
+    if is_ramp:
+        # --- MAP RAMP validation ---
+        # Calculate MAP: last full chunk avg + time fraction of incomplete chunk
+        # Find the last chunk where power was sustained (before failure/drop)
+        valid_chunks = []
+        for i, avg in enumerate(chunk_avgs):
+            # A chunk is "completed" if it has enough data and power didn't collapse
+            if i == 0 or avg > chunk_avgs[i-1] * 0.85:
+                valid_chunks.append(avg)
+            else:
+                break
 
-    # Pacing: divide into 3 equal segments
-    third = len(effort_powers) // 3
-    if third > 0:
-        p1 = float(np.mean(effort_powers[:third]))
-        p3 = float(np.mean(effort_powers[2*third:]))
-        pacing_ratio = round(p1 / p3, 3) if p3 > 0 else None
-    else:
-        pacing_ratio = None
+        if len(valid_chunks) >= 2:
+            last_complete_power = valid_chunks[-1]
+            step_increment = valid_chunks[-1] - valid_chunks[-2]
 
-    if pacing_ratio is not None:
-        if pacing_ratio > EFFORT_PACING_INVALID:
-            flags.append(f'Severe pacing fade (P1/P3 = {pacing_ratio:.2f}). '
-                         f'Power dropped significantly.')
-            pace_status = 'INVALID'
-        elif pacing_ratio > EFFORT_PACING_FLAGGED_HIGH:
-            flags.append(f'Moderate pacing fade (P1/P3 = {pacing_ratio:.2f}).')
-            pace_status = 'FLAGGED'
-        elif pacing_ratio < EFFORT_PACING_FLAGGED_LOW:
-            flags.append(f'Unusual negative split (P1/P3 = {pacing_ratio:.2f}).')
-            pace_status = 'FLAGGED'
+            # Time fraction of incomplete next step
+            completed_seconds = len(valid_chunks) * chunk_size
+            remaining_seconds = len(effort_powers) - completed_seconds
+            time_fraction = min(1.0, max(0, remaining_seconds / chunk_size))
+
+            raw_map = last_complete_power + (time_fraction * step_increment)
+            map_estimated = round(raw_map * MAP_RAMP_CORRECTION, 1)
+            flags.append(f'MAP ramp detected: {len(valid_chunks)} steps completed, '
+                         f'raw {raw_map:.0f}W corrected to {map_estimated:.0f}W '
+                         f'({int(MAP_RAMP_CORRECTION*100)}%).')
+        elif valid_chunks:
+            map_estimated = round(valid_chunks[-1] * MAP_RAMP_CORRECTION, 1)
+            flags.append('MAP ramp detected: only 1 step completed.')
         else:
-            pace_status = 'VALID'
-    else:
-        pace_status = 'VALID'
+            map_estimated = round(max_power * MAP_RAMP_CORRECTION, 1)
+            flags.append('MAP ramp detected but no complete steps.')
 
-    # Power floor
-    if hrvt2_power is not None:
-        if avg_power < hrvt2_power:
-            flags.append(f'3-min avg power ({avg_power:.0f}W) is below HRVT2 '
-                         f'({hrvt2_power:.0f}W). Physiologically implausible.')
-            floor_status = 'INVALID'
-        elif avg_power < hrvt2_power * 1.05:
-            flags.append(f'3-min avg power ({avg_power:.0f}W) is only '
-                         f'{(avg_power/hrvt2_power - 1)*100:.0f}% above HRVT2.')
-            floor_status = 'FLAGGED'
+        # Duration validation for ramp (more lenient — 60s minimum)
+        if duration < 60:
+            flags.append(f'MAP ramp too short ({duration:.0f}s).')
+            dur_status = 'INVALID'
+        elif duration < 120:
+            flags.append(f'MAP ramp short ({duration:.0f}s) — only ~{len(valid_chunks)} steps.')
+            dur_status = 'FLAGGED'
+        else:
+            dur_status = 'VALID'
+
+        # Power floor check (MAP should exceed HRVT2)
+        if hrvt2_power is not None and map_estimated:
+            if map_estimated < hrvt2_power:
+                flags.append(f'MAP ({map_estimated:.0f}W) below HRVT2 ({hrvt2_power:.0f}W).')
+                floor_status = 'INVALID'
+            elif map_estimated < hrvt2_power * 1.10:
+                flags.append(f'MAP ({map_estimated:.0f}W) only {(map_estimated/hrvt2_power - 1)*100:.0f}% above HRVT2.')
+                floor_status = 'FLAGGED'
+            else:
+                floor_status = 'VALID'
         else:
             floor_status = 'VALID'
+
+        # No pacing ratio for ramp (power is supposed to increase)
+        pacing_ratio = None
+        power_cv = None
+        all_statuses = [dur_status, floor_status]
+
     else:
-        floor_status = 'VALID'
+        # --- FLAT 3-MIN EFFORT validation (legacy) ---
+        map_estimated = round(avg_power, 1)
 
-    # HR response — not used for validation (power-only)
-    hr_status = 'VALID'
+        # Duration check
+        if duration < EFFORT_DUR_MIN_FLAGGED:
+            flags.append(f'Effort duration ({duration:.0f}s) too short '
+                         f'(minimum {EFFORT_DUR_MIN_FLAGGED}s).')
+            dur_status = 'INVALID'
+        elif duration < EFFORT_DUR_MIN_VALID:
+            flags.append(f'Effort duration ({duration:.0f}s) slightly short '
+                         f'(optimal {EFFORT_DUR_MIN_VALID}-{EFFORT_DUR_MAX_VALID}s).')
+            dur_status = 'FLAGGED'
+        elif duration > EFFORT_DUR_MAX_VALID:
+            flags.append(f'Effort duration ({duration:.0f}s) longer than expected.')
+            dur_status = 'FLAGGED'
+        else:
+            dur_status = 'VALID'
 
-    # Power CV
-    power_cv = None
-    if len(effort_powers) > 10:
-        # 5-second rolling average CV
-        window = 5
-        rolling = [float(np.mean(effort_powers[max(0,i-window):i+1]))
-                   for i in range(len(effort_powers))]
-        power_cv = round(float(np.std(rolling) / np.mean(rolling)), 4)
-        if power_cv > EFFORT_POWER_CV_FLAGGED:
-            flags.append(f'High power variability (CV = {power_cv:.3f}).')
+        # Pacing ratio
+        third = len(effort_powers) // 3
+        if third > 0:
+            p1 = float(np.mean(effort_powers[:third]))
+            p3 = float(np.mean(effort_powers[2*third:]))
+            pacing_ratio = round(p1 / p3, 3) if p3 > 0 else None
+        else:
+            pacing_ratio = None
 
-    cv_status = 'FLAGGED' if (power_cv and power_cv > EFFORT_POWER_CV_FLAGGED) else 'VALID'
+        if pacing_ratio is not None:
+            if pacing_ratio > EFFORT_PACING_INVALID:
+                flags.append(f'Severe pacing fade (P1/P3 = {pacing_ratio:.2f}).')
+                pace_status = 'INVALID'
+            elif pacing_ratio > EFFORT_PACING_FLAGGED_HIGH:
+                flags.append(f'Moderate pacing fade (P1/P3 = {pacing_ratio:.2f}).')
+                pace_status = 'FLAGGED'
+            elif pacing_ratio < EFFORT_PACING_FLAGGED_LOW:
+                flags.append(f'Unusual negative split (P1/P3 = {pacing_ratio:.2f}).')
+                pace_status = 'FLAGGED'
+            else:
+                pace_status = 'VALID'
+        else:
+            pace_status = 'VALID'
+
+        # Power floor
+        if hrvt2_power is not None:
+            if avg_power < hrvt2_power:
+                flags.append(f'3-min avg power ({avg_power:.0f}W) is below HRVT2 ({hrvt2_power:.0f}W).')
+                floor_status = 'INVALID'
+            elif avg_power < hrvt2_power * 1.05:
+                flags.append(f'3-min avg power ({avg_power:.0f}W) only '
+                             f'{(avg_power/hrvt2_power - 1)*100:.0f}% above HRVT2.')
+                floor_status = 'FLAGGED'
+            else:
+                floor_status = 'VALID'
+        else:
+            floor_status = 'VALID'
+
+        # Power CV
+        power_cv = None
+        if len(effort_powers) > 10:
+            window = 5
+            rolling = [float(np.mean(effort_powers[max(0,i-window):i+1]))
+                       for i in range(len(effort_powers))]
+            power_cv = round(float(np.std(rolling) / np.mean(rolling)), 4)
+            if power_cv > EFFORT_POWER_CV_FLAGGED:
+                flags.append(f'High power variability (CV = {power_cv:.3f}).')
+
+        cv_status = 'FLAGGED' if (power_cv and power_cv > EFFORT_POWER_CV_FLAGGED) else 'VALID'
+        all_statuses = [dur_status, pace_status, floor_status, cv_status]
 
     # Composite status
-    all_statuses = [dur_status, pace_status, floor_status, hr_status, cv_status]
     if 'INVALID' in all_statuses:
         overall = 'INVALID'
     elif 'FLAGGED' in all_statuses:
@@ -1464,9 +1571,11 @@ def validate_max_effort(powers, heart_rates, max_effort_segment,
 
     return {
         'status': overall,
+        'effort_type': effort_type,
         'duration_sec': round(duration, 1),
         'avg_power': round(avg_power, 1),
         'max_power': round(max_power, 1),
+        'map_estimated': map_estimated,
         'avg_hr': round(avg_hr, 1) if avg_hr else None,
         'max_hr': round(max_hr, 1) if max_hr else None,
         'pacing_ratio': pacing_ratio,

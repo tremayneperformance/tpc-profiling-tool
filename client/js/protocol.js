@@ -16,7 +16,10 @@ const Protocol = (() => {
             intensities: [0.60, 0.66, 0.71, 0.77, 0.82, 0.88, 0.93, 0.99, 1.04, 1.10],
         },
         recovery: { duration: 8 * 60, powerPct: 0.45 },      // 8 min @ 45% FTP
-        maxEffort: { duration: 3 * 60, powerPct: 1.15 },     // 3 min @ 115-130% FTP
+        mapRamp: {                                             // MAP ramp to failure
+            stageDuration: 60,                                 // 1 min per step
+            intensities: [1.10, 1.15, 1.20, 1.25, 1.30, 1.35],
+        },
         cooldown: { duration: 10 * 60, powerPct: 0.45 },     // 10 min @ 45% FTP
     };
 
@@ -103,17 +106,24 @@ const Protocol = (() => {
             kmh: sport === 'run' ? paceToKmh(recoveryTarget) : null,
         });
 
-        // Max Effort (bike) or TTE (run)
+        // MAP Ramp (bike) or TTE (run)
         if (sport === 'bike') {
-            const maxTarget = Math.round(thresholdValue * proto.maxEffort.powerPct);
-            phases.push({
-                id: PHASE.MAX_EFFORT,
-                label: 'Max Effort',
-                duration: proto.maxEffort.duration,
-                target: maxTarget,
-                targetDisplay: `>${maxTarget} W`,
-                isMaxEffort: true,
-            });
+            const mapRamp = proto.mapRamp;
+            for (let i = 0; i < mapRamp.intensities.length; i++) {
+                const pct = mapRamp.intensities[i];
+                const target = Math.round(thresholdValue * pct);
+                phases.push({
+                    id: PHASE.MAX_EFFORT,
+                    label: `MAP ${Math.round(pct * 100)}%`,
+                    stageNum: i + 1,
+                    duration: mapRamp.stageDuration,
+                    target: target,
+                    targetDisplay: `${target} W`,
+                    isMaxEffort: true,
+                    isMapRamp: true,
+                    pct: pct,
+                });
+            }
         } else {
             const tteTarget = thresholdValue / proto.tte.pacePct;
             phases.push({
@@ -202,10 +212,11 @@ const Protocol = (() => {
         });
 
         if (sport === 'bike') {
+            const mapTotal = proto.mapRamp.intensities.length * proto.mapRamp.stageDuration;
             segments.push({
                 id: 'max-effort',
-                label: 'Max Effort',
-                duration: proto.maxEffort.duration,
+                label: 'MAP Ramp',
+                duration: mapTotal,
                 color: 'max-effort',
             });
         } else {

@@ -33,7 +33,7 @@ const App = (() => {
     let preflightRRData = [];
 
     // Early ramp termination tracking
-    const HRVT2_THRESHOLD = 0.50;       // DFA Alpha1 below this = HRVT2 reached
+    const HRVT2_THRESHOLD = 0.51;       // DFA Alpha1 below this = HRVT2 reached
     let stageStartTimestamp = null;      // When current ramp stage started (ms)
     let hrvt2StageCompleted = false;     // Has a full stage below HRVT2 been completed?
     let lastCompletedStageDFA = null;    // DFA of the most recently completed stage
@@ -43,6 +43,11 @@ const App = (() => {
     const MAX_CHART_POINTS = 600;
 
     let audioCtx = null;
+
+    // MAP ramp auto-termination: detect when athlete stops pedalling
+    const MAP_POWER_DROP_THRESHOLD = 0.30; // below 30% of target = stopped
+    const MAP_POWER_DROP_DURATION = 8;     // 8 seconds of no power = auto-terminate
+    let mapPowerDropSec = 0;               // consecutive seconds below threshold
 
     // --- Init ---
     function init() {
@@ -664,26 +669,24 @@ const App = (() => {
 
         // --- Bike ERG mode control ---
         if (sport === 'bike') {
-            if (state.phase.isMaxEffort) {
-                // Max effort: ERG off — athlete freewheels / selects own power
-                // (ERG was already disabled when we entered this phase)
-            } else if (state.phase.id === Protocol.PHASE.RECOVERY) {
-                // Recovery: ERG on for first half, then off to let athlete spin up
-                const halfRecovery = state.phase.duration / 2;
-                if (state.phaseElapsed < halfRecovery) {
-                    BLE.setTargetPower(state.phase.target);
-                } else if (state.phaseElapsed >= halfRecovery && state.phaseElapsed < halfRecovery + 2) {
-                    // Transition moment — disable ERG by setting very low target
-                    // (FTMS doesn't have a "disable ERG" command, but 0W effectively frees the flywheel)
-                    BLE.setTargetPower(0);
-                }
-                // After half recovery: don't send ERG commands — athlete controls power
-                // Warn if power is too high during recovery
-                if (latestPower && latestPower > state.phase.target * 1.5) {
-                    showPowerWarning(true);
+            if (state.phase.isMapRamp) {
+                // MAP ramp: ERG on at target, auto-terminate on power drop
+                BLE.setTargetPower(state.phase.target);
+                if (latestPower != null && latestPower < state.phase.target * MAP_POWER_DROP_THRESHOLD) {
+                    mapPowerDropSec++;
+                    if (mapPowerDropSec >= MAP_POWER_DROP_DURATION) {
+                        // Athlete has stopped — skip remaining MAP stages to cooldown
+                        mapRampFailure(state);
+                    }
                 } else {
-                    showPowerWarning(false);
+                    mapPowerDropSec = 0;
                 }
+            } else if (state.phase.isMaxEffort) {
+                // Legacy max effort (non-ramp): ERG off
+            } else if (state.phase.id === Protocol.PHASE.RECOVERY) {
+                // Recovery: ERG on at recovery power for full duration
+                BLE.setTargetPower(state.phase.target);
+                showPowerWarning(false);
             } else if (state.phase.id === Protocol.PHASE.COOLDOWN) {
                 // Cooldown: re-enable ERG
                 BLE.setTargetPower(state.phase.target);
@@ -782,8 +785,12 @@ const App = (() => {
 
         // --- Bike ERG transitions on phase change ---
         if (sport === 'bike') {
-            if (state.phase.id === Protocol.PHASE.MAX_EFFORT) {
-                // Entering max effort — disable ERG (athlete controls power)
+            if (state.phase.isMapRamp) {
+                // Entering MAP ramp step — ERG on at target
+                BLE.setTargetPower(state.phase.target);
+                mapPowerDropSec = 0;
+            } else if (state.phase.id === Protocol.PHASE.MAX_EFFORT) {
+                // Legacy max effort — disable ERG
                 BLE.setTargetPower(0);
             } else if (state.phase.id === Protocol.PHASE.COOLDOWN) {
                 // Entering cooldown — re-enable ERG
@@ -842,6 +849,37 @@ const App = (() => {
         document.getElementById('tte-done-section').style.display = 'none';
 
         // Notification beep
+        playBeep(440, 0.3);
+    }
+
+    /**
+     * MAP ramp auto-termination — athlete has stopped pedalling.
+     * Truncates remaining MAP stages and skips to cooldown.
+     */
+    function mapRampFailure(state) {
+        if (!isRunning) return;
+        console.log(`MAP ramp: power drop detected at stage ${state.phase.label}, skipping to cooldown`);
+
+        // Truncate current MAP stage to end now
+        const phasesBeforeCurrent = phases.slice(0, state.index);
+        const phaseStartElapsed = phasesBeforeCurrent.reduce((sum, p) => sum + p.duration, 0);
+        const actualDuration = Math.max(1, elapsedSec - phaseStartElapsed);
+        phases[state.index].duration = actualDuration;
+
+        // Remove remaining MAP stages (keep cooldown)
+        const cooldownIndex = phases.findIndex((p, i) => i > state.index && p.id === Protocol.PHASE.COOLDOWN);
+        if (cooldownIndex > state.index + 1) {
+            phases.splice(state.index + 1, cooldownIndex - state.index - 1);
+        }
+
+        // Jump elapsed time to end of truncated phase
+        const newElapsed = phaseStartElapsed + actualDuration;
+        const adjustment = (newElapsed - elapsedSec) * 1000;
+        startTimestamp -= adjustment;
+
+        // Reset drop counter and set ERG to cooldown power
+        mapPowerDropSec = 0;
+        document.getElementById('tte-done-section').style.display = 'none';
         playBeep(440, 0.3);
     }
 

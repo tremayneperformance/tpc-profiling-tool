@@ -234,30 +234,10 @@ const BLE = (() => {
         trainerControlPoint = null;
         fecTxCharacteristic = null;
 
-        // Bluefy (iOS) requires service UUID filters — acceptAllDevices fails.
-        // Use standard 16-bit UUIDs (FTMS + CPS) plus common trainer name
-        // prefixes to catch trainers that only advertise proprietary services.
-        // FE-C custom UUID stays in optionalServices (accessible after connect).
+        // Match the exact pattern that works for HRM on Bluefy:
+        // single filter, no optionalServices, no namePrefix.
         const device = await navigator.bluetooth.requestDevice({
-            filters: [
-                { services: [UUID.ftms.service] },
-                { services: [UUID.cps.service] },
-                { namePrefix: 'KICKR' },
-                { namePrefix: 'Tacx' },
-                { namePrefix: 'TACX' },
-                { namePrefix: 'Neo' },
-                { namePrefix: 'Elite' },
-                { namePrefix: 'Direto' },
-                { namePrefix: 'HAMMER' },
-                { namePrefix: 'Magnus' },
-                { namePrefix: 'Saris' },
-                { namePrefix: 'Jet Black' },
-                { namePrefix: 'JETBLACK' },
-                { namePrefix: 'Wahoo' },
-                { namePrefix: 'CORE' },
-                { namePrefix: 'Zumo' },
-            ],
-            optionalServices: [UUID.ftms.service, UUID.fec.service, UUID.cps.service],
+            filters: [{ services: [UUID.ftms.service] }],
         });
 
         device.addEventListener('gattserverdisconnected', () => {

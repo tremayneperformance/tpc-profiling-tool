@@ -440,6 +440,8 @@ h1, h2, h3 {
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     transition: border-color 0.3s var(--ease);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 .device-slot.connected {
     border-color: var(--accent);

@@ -304,6 +304,14 @@ const App = (() => {
         document.getElementById('btn-connect-hrm-bike').addEventListener('click', connectHRM);
         document.getElementById('btn-connect-hrm-run').addEventListener('click', connectHRM);
 
+        // Make entire trainer slot tappable (large mobile touch target)
+        document.getElementById('slot-trainer').addEventListener('click', (e) => {
+            // Don't double-fire if the button itself was tapped
+            if (e.target.closest('#btn-connect-trainer')) return;
+            const btn = document.getElementById('btn-connect-trainer');
+            if (!btn.disabled) connectTrainer();
+        });
+
         document.getElementById('threshold-power').addEventListener('input', () => {
             updateProtocolPreview();
             updateStartButton();
@@ -393,21 +401,26 @@ const App = (() => {
     async function connectTrainer() {
         const btn = document.getElementById('btn-connect-trainer');
         const nameEl = document.getElementById('trainer-name');
+
+        // Immediate visual feedback — force paint before BLE call
         btn.textContent = 'CONNECTING...';
         btn.disabled = true;
-        nameEl.textContent = 'Searching...';
+        nameEl.textContent = 'Searching for trainer...';
         nameEl.classList.remove('active');
+        nameEl.style.color = '';
+
+        // Force the browser to paint the UI change before the BLE picker blocks
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
         try {
             const name = await BLE.connectTrainer();
             nameEl.textContent = name;
             nameEl.classList.add('active');
+            nameEl.style.color = '';
             document.getElementById('slot-trainer').classList.add('connected');
             btn.textContent = 'CONNECTED';
             btn.classList.add('connected');
 
-            // Safety net: explicitly set flag and update status
-            // (handleConnectionChange should also do this via BLE callback,
-            //  but ensure it happens even if callback timing varies)
             trainerConnected = true;
             updateBLEStatus();
             updateStartButton();
@@ -416,15 +429,17 @@ const App = (() => {
             btn.disabled = false;
             console.error('Trainer connection failed:', e);
 
-            // Show error visibly — console.error is invisible on mobile
+            // Show error prominently — red text, impossible to miss
+            nameEl.style.color = '#ef4444';
             if (e.name === 'NotFoundError' || e.message?.includes('cancel')) {
                 nameEl.textContent = 'Cancelled — tap to retry';
             } else if (e.name === 'SecurityError') {
-                nameEl.textContent = 'Bluetooth permission denied';
+                nameEl.textContent = 'Bluetooth blocked — check permissions';
+            } else if (e.message?.includes('not available')) {
+                nameEl.textContent = 'Bluetooth not supported on this browser';
             } else {
-                nameEl.textContent = 'Failed: ' + (e.message || 'Unknown error');
+                nameEl.textContent = 'Error: ' + (e.message || e.name || 'Unknown');
             }
-            nameEl.classList.remove('active');
         }
     }
 
@@ -1230,6 +1245,10 @@ const App = (() => {
 
     // --- Boot ---
     document.addEventListener('DOMContentLoaded', init);
+
+    // Expose connect functions globally for inline onclick fallback
+    window._connectTrainer = connectTrainer;
+    window._connectHRM = connectHRM;
 
     return { init };
 })();

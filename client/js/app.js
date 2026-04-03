@@ -233,7 +233,7 @@ const App = (() => {
         // Show nav links for coach logins
         const navLinks = document.getElementById('nav-links');
         if (navLinks && currentUser && currentUser.role === 'coach') {
-            navLinks.style.display = '';
+            navLinks.style.display = 'flex';
         }
 
         showScreen('setup-screen');

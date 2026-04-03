@@ -193,45 +193,6 @@ def create_app():
             'user': user.to_dict(),
         })
 
-    @app.route('/api/auth/dev-login', methods=['POST'])
-    def dev_login():
-        """
-        Dev-mode login: enter a single password to get full coach access.
-        Set DEV_PASSWORD env var (defaults to 'tpc2026' for local testing).
-        Disable in production by setting DEV_PASSWORD='' or removing it.
-        """
-        dev_pw = os.environ.get('DEV_PASSWORD', 'tpc2026')
-        if not dev_pw:
-            return jsonify({'status': 'error', 'message': 'Dev login disabled.'}), 403
-
-        data = request.get_json(silent=True) or {}
-        password = str(data.get('password', ''))
-
-        if password != dev_pw:
-            return jsonify({'status': 'error', 'message': 'Invalid password.'}), 401
-
-        # Find or create the coach account
-        coach = User.query.filter_by(role='coach').first()
-        if not coach:
-            coach = User(
-                email='coach@tremayneperformance.com',
-                name='Kyle Tremayne',
-                role='coach',
-                approved=True,
-            )
-            db.session.add(coach)
-            db.session.commit()
-
-        coach.last_login = datetime.utcnow()
-        db.session.commit()
-
-        token = create_token(coach)
-        return jsonify({
-            'status': 'ok',
-            'token': token,
-            'user': coach.to_dict(),
-        })
-
     @app.route('/api/auth/coach-login', methods=['POST'])
     def coach_login():
         """Coach logs in with email + password."""

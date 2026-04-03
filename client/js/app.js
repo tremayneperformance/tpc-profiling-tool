@@ -100,7 +100,6 @@ const App = (() => {
         document.getElementById('btn-athlete-login').addEventListener('click', athleteLogin);
         document.getElementById('btn-set-password').addEventListener('click', setPassword);
         document.getElementById('btn-logout').addEventListener('click', logout);
-        document.getElementById('btn-dev-login').addEventListener('click', devLogin);
 
         // Enter key handlers
         document.getElementById('login-password').addEventListener('keydown', (e) => {
@@ -108,9 +107,6 @@ const App = (() => {
         });
         document.getElementById('login-confirm-password').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') setPassword();
-        });
-        document.getElementById('dev-password').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') devLogin();
         });
     }
 
@@ -206,43 +202,6 @@ const App = (() => {
         } finally {
             btn.disabled = false;
             btn.querySelector('.btn-start-text').textContent = 'SET PASSWORD & CONTINUE';
-        }
-    }
-
-    async function devLogin() {
-        const password = document.getElementById('dev-password').value.trim();
-        if (!password) {
-            showLoginError('Please enter the password.');
-            return;
-        }
-
-        const btn = document.getElementById('btn-dev-login');
-        btn.disabled = true;
-        btn.textContent = 'LOGGING IN...';
-        hideLoginError();
-
-        try {
-            const resp = await fetch('/api/auth/dev-login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password }),
-            });
-            const data = await resp.json();
-
-            if (resp.ok) {
-                currentUser = data.user;
-                authToken = data.token;
-                localStorage.setItem('auth_token', data.token);
-                localStorage.setItem('auth_user', JSON.stringify(data.user));
-                onLoginSuccess();
-            } else {
-                showLoginError(data.message || 'Invalid password.');
-            }
-        } catch (err) {
-            showLoginError('Network error. Please try again.');
-        } finally {
-            btn.disabled = false;
-            btn.textContent = 'LOGIN WITH PASSWORD';
         }
     }
 

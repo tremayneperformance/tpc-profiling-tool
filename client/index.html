@@ -43,7 +43,7 @@
         <section class="card" style="max-width:420px;margin:2rem auto;">
             <h2 class="card-title">ATHLETE LOGIN</h2>
             <p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:1.5rem;">
-                Enter your email to receive an access PIN.
+                Log in with the email your coach registered for you.
             </p>
 
             <div id="login-step-email">
@@ -51,27 +51,30 @@
                     <label for="login-email">Email Address</label>
                     <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email">
                 </div>
-                <button class="btn-start" id="btn-request-pin" style="margin-top:1rem;width:100%;">
-                    <span class="btn-start-text">SEND PIN</span>
-                    <span class="btn-start-sub">We'll email you a 6-digit code</span>
+                <div class="form-group full-width">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" placeholder="Enter password" autocomplete="current-password">
+                </div>
+                <button class="btn-start" id="btn-athlete-login" style="margin-top:1rem;width:100%;">
+                    <span class="btn-start-text">LOG IN</span>
+                    <span class="btn-start-sub">First time? Use "tpc" as your password</span>
                 </button>
             </div>
 
-            <div id="login-step-pin" style="display:none;">
+            <div id="login-step-set-password" style="display:none;">
                 <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1rem;">
-                    PIN sent to <strong id="login-email-display"></strong>
+                    Welcome! Please set your own password to continue.
                 </p>
                 <div class="form-group full-width">
-                    <label for="login-pin">Access PIN</label>
-                    <input type="text" id="login-pin" placeholder="123456" maxlength="6"
-                           inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code"
-                           style="font-size:1.5rem;text-align:center;letter-spacing:0.5em;">
+                    <label for="login-new-password">New Password</label>
+                    <input type="password" id="login-new-password" placeholder="Choose a password (4+ characters)" autocomplete="new-password">
                 </div>
-                <button class="btn-start" id="btn-verify-pin" style="margin-top:1rem;width:100%;">
-                    <span class="btn-start-text">VERIFY PIN</span>
-                </button>
-                <button class="btn-new-test" id="btn-back-email" style="margin-top:0.5rem;width:100%;font-size:0.8rem;">
-                    Use different email
+                <div class="form-group full-width">
+                    <label for="login-confirm-password">Confirm Password</label>
+                    <input type="password" id="login-confirm-password" placeholder="Confirm password" autocomplete="new-password">
+                </div>
+                <button class="btn-start" id="btn-set-password" style="margin-top:1rem;width:100%;">
+                    <span class="btn-start-text">SET PASSWORD & CONTINUE</span>
                 </button>
             </div>
 

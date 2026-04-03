@@ -97,83 +97,46 @@ const App = (() => {
     }
 
     function bindAuthEvents() {
-        document.getElementById('btn-request-pin').addEventListener('click', requestPin);
-        document.getElementById('btn-verify-pin').addEventListener('click', verifyPin);
-        document.getElementById('btn-back-email').addEventListener('click', () => {
-            document.getElementById('login-step-email').style.display = '';
-            document.getElementById('login-step-pin').style.display = 'none';
-            hideLoginError();
-        });
+        document.getElementById('btn-athlete-login').addEventListener('click', athleteLogin);
+        document.getElementById('btn-set-password').addEventListener('click', setPassword);
         document.getElementById('btn-logout').addEventListener('click', logout);
         document.getElementById('btn-dev-login').addEventListener('click', devLogin);
 
         // Enter key handlers
-        document.getElementById('login-email').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') requestPin();
+        document.getElementById('login-password').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') athleteLogin();
         });
-        document.getElementById('login-pin').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') verifyPin();
+        document.getElementById('login-confirm-password').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') setPassword();
         });
         document.getElementById('dev-password').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') devLogin();
         });
     }
 
-    async function requestPin() {
+    async function athleteLogin() {
         const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+
         if (!email) {
             showLoginError('Please enter your email address.');
             return;
         }
-
-        const btn = document.getElementById('btn-request-pin');
-        btn.disabled = true;
-        btn.querySelector('.btn-start-text').textContent = 'SENDING...';
-        hideLoginError();
-
-        try {
-            const resp = await fetch('/api/auth/request-pin', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email }),
-            });
-            const data = await resp.json();
-
-            if (resp.ok) {
-                document.getElementById('login-step-email').style.display = 'none';
-                document.getElementById('login-step-pin').style.display = '';
-                document.getElementById('login-email-display').textContent = email;
-                document.getElementById('login-pin').focus();
-            } else {
-                showLoginError(data.message || 'Could not send PIN.');
-            }
-        } catch (err) {
-            showLoginError('Network error. Please try again.');
-        } finally {
-            btn.disabled = false;
-            btn.querySelector('.btn-start-text').textContent = 'SEND PIN';
-        }
-    }
-
-    async function verifyPin() {
-        const email = document.getElementById('login-email').value.trim();
-        const pin = document.getElementById('login-pin').value.trim();
-
-        if (!pin || pin.length !== 6) {
-            showLoginError('Please enter the 6-digit PIN.');
+        if (!password) {
+            showLoginError('Please enter your password.');
             return;
         }
 
-        const btn = document.getElementById('btn-verify-pin');
+        const btn = document.getElementById('btn-athlete-login');
         btn.disabled = true;
-        btn.querySelector('.btn-start-text').textContent = 'VERIFYING...';
+        btn.querySelector('.btn-start-text').textContent = 'LOGGING IN...';
         hideLoginError();
 
         try {
-            const resp = await fetch('/api/auth/verify-pin', {
+            const resp = await fetch('/api/auth/athlete-login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, pin }),
+                body: JSON.stringify({ email, password }),
             });
             const data = await resp.json();
 
@@ -182,15 +145,67 @@ const App = (() => {
                 authToken = data.token;
                 localStorage.setItem('auth_token', data.token);
                 localStorage.setItem('auth_user', JSON.stringify(data.user));
-                onLoginSuccess();
+
+                // Check if athlete must set a new password
+                if (data.user.password_must_change) {
+                    document.getElementById('login-step-email').style.display = 'none';
+                    document.getElementById('login-step-set-password').style.display = '';
+                    document.getElementById('login-new-password').focus();
+                } else {
+                    onLoginSuccess();
+                }
             } else {
-                showLoginError(data.message || 'Invalid PIN.');
+                showLoginError(data.message || 'Login failed.');
             }
         } catch (err) {
             showLoginError('Network error. Please try again.');
         } finally {
             btn.disabled = false;
-            btn.querySelector('.btn-start-text').textContent = 'VERIFY PIN';
+            btn.querySelector('.btn-start-text').textContent = 'LOG IN';
+        }
+    }
+
+    async function setPassword() {
+        const newPw = document.getElementById('login-new-password').value;
+        const confirmPw = document.getElementById('login-confirm-password').value;
+
+        if (newPw.length < 4) {
+            showLoginError('Password must be at least 4 characters.');
+            return;
+        }
+        if (newPw !== confirmPw) {
+            showLoginError('Passwords do not match.');
+            return;
+        }
+
+        const btn = document.getElementById('btn-set-password');
+        btn.disabled = true;
+        btn.querySelector('.btn-start-text').textContent = 'SAVING...';
+        hideLoginError();
+
+        try {
+            const resp = await fetch('/api/auth/set-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`,
+                },
+                body: JSON.stringify({ new_password: newPw }),
+            });
+            const data = await resp.json();
+
+            if (resp.ok) {
+                currentUser = data.user;
+                localStorage.setItem('auth_user', JSON.stringify(data.user));
+                onLoginSuccess();
+            } else {
+                showLoginError(data.message || 'Could not set password.');
+            }
+        } catch (err) {
+            showLoginError('Network error. Please try again.');
+        } finally {
+            btn.disabled = false;
+            btn.querySelector('.btn-start-text').textContent = 'SET PASSWORD & CONTINUE';
         }
     }
 

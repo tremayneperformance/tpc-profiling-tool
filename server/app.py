@@ -135,14 +135,15 @@ def create_app():
     # AUTH ROUTES
     # -----------------------------------------------------------------------
 
-    @app.route('/api/auth/request-pin', methods=['POST'])
-    def request_pin():
-        """Athlete requests a PIN by email."""
+    @app.route('/api/auth/athlete-login', methods=['POST'])
+    def athlete_login():
+        """Athlete logs in with email + password."""
         data = request.get_json(silent=True) or {}
         email = str(data.get('email', '')).strip().lower()
+        password = str(data.get('password', ''))
 
-        if not email:
-            return jsonify({'status': 'error', 'message': 'Email is required.'}), 400
+        if not email or not password:
+            return jsonify({'status': 'error', 'message': 'Email and password required.'}), 400
 
         user = User.query.filter_by(email=email).first()
 
@@ -158,31 +159,9 @@ def create_app():
                 'message': 'Your account is pending approval. Contact your coach.'
             }), 403
 
-        pin = set_pin_for_user(user)
-        send_pin_email(email, pin)
+        if not verify_password(user, password):
+            return jsonify({'status': 'error', 'message': 'Incorrect password.'}), 401
 
-        return jsonify({
-            'status': 'ok',
-            'message': 'PIN sent to your email. It expires in 10 minutes.'
-        })
-
-    @app.route('/api/auth/verify-pin', methods=['POST'])
-    def verify_pin():
-        """Athlete submits PIN to get auth token."""
-        data = request.get_json(silent=True) or {}
-        email = str(data.get('email', '')).strip().lower()
-        pin = str(data.get('pin', '')).strip()
-
-        if not email or not pin:
-            return jsonify({'status': 'error', 'message': 'Email and PIN required.'}), 400
-
-        user = User.query.filter_by(email=email).first()
-        if not user or not validate_pin(user, pin):
-            return jsonify({'status': 'error', 'message': 'Invalid or expired PIN.'}), 401
-
-        # Clear PIN after successful use
-        user.pin_hash = None
-        user.pin_expires = None
         user.last_login = datetime.utcnow()
         db.session.commit()
 
@@ -190,6 +169,27 @@ def create_app():
         return jsonify({
             'status': 'ok',
             'token': token,
+            'user': user.to_dict(),
+        })
+
+    @app.route('/api/auth/set-password', methods=['POST'])
+    @login_required
+    def set_password():
+        """Athlete sets a new password (first login or password change)."""
+        data = request.get_json(silent=True) or {}
+        new_password = str(data.get('new_password', ''))
+
+        if len(new_password) < 4:
+            return jsonify({'status': 'error', 'message': 'Password must be at least 4 characters.'}), 400
+
+        user = g.current_user
+        user.password_hash = hash_password(new_password)
+        user.password_must_change = False
+        db.session.commit()
+
+        return jsonify({
+            'status': 'ok',
+            'message': 'Password updated.',
             'user': user.to_dict(),
         })
 
@@ -296,6 +296,8 @@ def create_app():
             name=name,
             role='athlete',
             approved=True,
+            password_hash=hash_password('tpc'),
+            password_must_change=True,
         )
         db.session.add(user)
         db.session.commit()

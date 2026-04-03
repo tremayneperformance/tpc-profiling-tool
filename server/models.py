@@ -27,6 +27,7 @@ class User(db.Model):
     pin_expires = db.Column(db.DateTime, nullable=True)
     # Coach-only: password hash for persistent login
     password_hash = db.Column(db.String(128), nullable=True)
+    password_must_change = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, nullable=True)
 
@@ -53,6 +54,7 @@ class User(db.Model):
             'hrmax_run': self.hrmax_run,
             'threshold_power': self.threshold_power,
             'threshold_pace': self.threshold_pace,
+            'password_must_change': self.password_must_change or False,
         }
 
 

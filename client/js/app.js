@@ -429,14 +429,13 @@ const App = (() => {
 
             // Show error prominently — red text, impossible to miss
             nameEl.style.color = '#ef4444';
-            if (e.name === 'NotFoundError' || e.message?.includes('cancel')) {
+            const msg = e?.message || e?.name || String(e) || 'Unknown';
+            if (msg.includes('cancel') || e?.name === 'NotFoundError') {
                 nameEl.textContent = 'Cancelled — tap to retry';
-            } else if (e.name === 'SecurityError') {
+            } else if (e?.name === 'SecurityError') {
                 nameEl.textContent = 'Bluetooth blocked — check permissions';
-            } else if (e.message?.includes('not available')) {
-                nameEl.textContent = 'Bluetooth not supported on this browser';
             } else {
-                nameEl.textContent = 'Error: ' + (e.message || e.name || 'Unknown');
+                nameEl.textContent = 'Error: ' + msg;
             }
         }
     }

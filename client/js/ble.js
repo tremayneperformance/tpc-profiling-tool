@@ -225,12 +225,21 @@ const BLE = (() => {
     async function connectTrainer() {
         if (!isAvailable()) throw new Error('Web Bluetooth not available');
 
+        // Clean up any stale connection before starting a new one
+        if (trainerDevice && trainerDevice.gatt.connected) {
+            try { trainerDevice.gatt.disconnect(); } catch (_) {}
+        }
+        trainerDevice = null;
+        trainerServer = null;
+        trainerControlPoint = null;
+        fecTxCharacteristic = null;
+
         const device = await navigator.bluetooth.requestDevice({
             filters: [
                 { services: [UUID.ftms.service] },
                 { services: [UUID.fec.service] },
             ],
-            optionalServices: [UUID.ftms.service, UUID.fec.service, UUID.cps.service],
+            optionalServices: [UUID.cps.service],
         });
 
         device.addEventListener('gattserverdisconnected', () => {

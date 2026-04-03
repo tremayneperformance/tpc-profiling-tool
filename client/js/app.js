@@ -392,12 +392,15 @@ const App = (() => {
     // --- Device Connections ---
     async function connectTrainer() {
         const btn = document.getElementById('btn-connect-trainer');
+        const nameEl = document.getElementById('trainer-name');
         btn.textContent = 'CONNECTING...';
         btn.disabled = true;
+        nameEl.textContent = 'Searching...';
+        nameEl.classList.remove('active');
         try {
             const name = await BLE.connectTrainer();
-            document.getElementById('trainer-name').textContent = name;
-            document.getElementById('trainer-name').classList.add('active');
+            nameEl.textContent = name;
+            nameEl.classList.add('active');
             document.getElementById('slot-trainer').classList.add('connected');
             btn.textContent = 'CONNECTED';
             btn.classList.add('connected');
@@ -412,6 +415,16 @@ const App = (() => {
             btn.textContent = 'CONNECT';
             btn.disabled = false;
             console.error('Trainer connection failed:', e);
+
+            // Show error visibly — console.error is invisible on mobile
+            if (e.name === 'NotFoundError' || e.message?.includes('cancel')) {
+                nameEl.textContent = 'Cancelled — tap to retry';
+            } else if (e.name === 'SecurityError') {
+                nameEl.textContent = 'Bluetooth permission denied';
+            } else {
+                nameEl.textContent = 'Failed: ' + (e.message || 'Unknown error');
+            }
+            nameEl.classList.remove('active');
         }
     }
 

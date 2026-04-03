@@ -1227,7 +1227,7 @@ def analyze_ramp_stages(windows, stages, warmup_end):
     hrvt1c_power_result = {'value': None, 'extrapolated': False, 'ci_95': None}
     hrvt1c_hr_result = {'value': None, 'extrapolated': False, 'ci_95': None}
     if a1_max_early is not None:
-        a1_star = round((a1_max_early + 0.51) / 2, 4)
+        a1_star = round((a1_max_early + 0.50) / 2, 4)
         hrvt1c_power_result = _fit_regression_and_solve(
             stage_data, 'mean_power', a1_star)
         hrvt1c_hr_result = _fit_regression_and_solve(

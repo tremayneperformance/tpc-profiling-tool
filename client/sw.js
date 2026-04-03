@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dfa-ramp-v1';
+const CACHE_NAME = 'dfa-ramp-v2';
 const ASSETS = [
     '/index.html',
     '/css/style.css',
@@ -25,8 +25,16 @@ self.addEventListener('activate', (e) => {
     self.clients.claim();
 });
 
+// Network-first: try fresh version, fall back to cache for offline use
 self.addEventListener('fetch', (e) => {
     e.respondWith(
-        caches.match(e.request).then(cached => cached || fetch(e.request))
+        fetch(e.request)
+            .then(response => {
+                // Cache the fresh response for offline fallback
+                const clone = response.clone();
+                caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+                return response;
+            })
+            .catch(() => caches.match(e.request))
     );
 });

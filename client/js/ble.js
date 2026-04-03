@@ -234,12 +234,14 @@ const BLE = (() => {
         trainerControlPoint = null;
         fecTxCharacteristic = null;
 
+        // Use standard FTMS UUID in filters (works on all BLE browsers).
+        // FE-C custom UUID in filters breaks Bluefy (iOS) — keep it in
+        // optionalServices so we can still use it after connecting.
         const device = await navigator.bluetooth.requestDevice({
             filters: [
                 { services: [UUID.ftms.service] },
-                { services: [UUID.fec.service] },
             ],
-            optionalServices: [UUID.cps.service],
+            optionalServices: [UUID.fec.service, UUID.cps.service],
         });
 
         device.addEventListener('gattserverdisconnected', () => {

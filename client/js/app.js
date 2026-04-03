@@ -402,15 +402,13 @@ const App = (() => {
         const btn = document.getElementById('btn-connect-trainer');
         const nameEl = document.getElementById('trainer-name');
 
-        // Immediate visual feedback — force paint before BLE call
+        // Immediate visual feedback — must stay synchronous before
+        // requestDevice() to preserve the user gesture token (critical on Bluefy/iOS)
         btn.textContent = 'CONNECTING...';
         btn.disabled = true;
         nameEl.textContent = 'Searching for trainer...';
         nameEl.classList.remove('active');
         nameEl.style.color = '';
-
-        // Force the browser to paint the UI change before the BLE picker blocks
-        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
         try {
             const name = await BLE.connectTrainer();

@@ -24,19 +24,13 @@
 
 <div class="container" style="padding-top: 1rem;">
 
-  <!-- AUTH GATE -->
-  <div id="auth-gate" style="max-width:400px;margin:4rem auto;">
+  <!-- AUTH GATE (hidden by default — shown only if token check fails) -->
+  <div id="auth-gate" style="max-width:400px;margin:4rem auto;display:none;">
     <div class="card" style="padding:2rem;">
       <h2 style="font-family:'Montserrat',sans-serif;margin-bottom:1rem;">Coach Login</h2>
       <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:1.5rem;">
-        Enter the dev password or coach credentials to access data.
+        Log in with your coach email at the <a href="/" style="color:var(--accent);">main page</a> to access data.
       </p>
-      <div class="input-group" style="margin-bottom:1rem;">
-        <label for="auth-password">Password</label>
-        <input type="password" id="auth-password" placeholder="Dev password" />
-      </div>
-      <button id="auth-login-btn" class="btn-primary" style="width:100%;">Login</button>
-      <p id="auth-error" style="color:#ef4444;font-size:0.8rem;margin-top:0.75rem;display:none;"></p>
     </div>
   </div>
 

@@ -304,14 +304,6 @@ const App = (() => {
         document.getElementById('btn-connect-hrm-bike').addEventListener('click', connectHRM);
         document.getElementById('btn-connect-hrm-run').addEventListener('click', connectHRM);
 
-        // Make entire trainer slot tappable (large mobile touch target)
-        document.getElementById('slot-trainer').addEventListener('click', (e) => {
-            // Don't double-fire if the button itself was tapped
-            if (e.target.closest('#btn-connect-trainer')) return;
-            const btn = document.getElementById('btn-connect-trainer');
-            if (!btn.disabled) connectTrainer();
-        });
-
         document.getElementById('threshold-power').addEventListener('input', () => {
             updateProtocolPreview();
             updateStartButton();
@@ -400,43 +392,19 @@ const App = (() => {
     // --- Device Connections ---
     async function connectTrainer() {
         const btn = document.getElementById('btn-connect-trainer');
-        const nameEl = document.getElementById('trainer-name');
-
-        // Immediate visual feedback — must stay synchronous before
-        // requestDevice() to preserve the user gesture token (critical on Bluefy/iOS)
         btn.textContent = 'CONNECTING...';
         btn.disabled = true;
-        nameEl.textContent = 'Searching for trainer...';
-        nameEl.classList.remove('active');
-        nameEl.style.color = '';
-
         try {
             const name = await BLE.connectTrainer();
-            nameEl.textContent = name;
-            nameEl.classList.add('active');
-            nameEl.style.color = '';
+            document.getElementById('trainer-name').textContent = name;
+            document.getElementById('trainer-name').classList.add('active');
             document.getElementById('slot-trainer').classList.add('connected');
             btn.textContent = 'CONNECTED';
             btn.classList.add('connected');
-
-            trainerConnected = true;
-            updateBLEStatus();
-            updateStartButton();
         } catch (e) {
             btn.textContent = 'CONNECT';
             btn.disabled = false;
             console.error('Trainer connection failed:', e);
-
-            // Show error prominently — red text, impossible to miss
-            nameEl.style.color = '#ef4444';
-            const msg = e?.message || e?.name || String(e) || 'Unknown';
-            if (msg.includes('cancel') || e?.name === 'NotFoundError') {
-                nameEl.textContent = 'Cancelled — tap to retry';
-            } else if (e?.name === 'SecurityError') {
-                nameEl.textContent = 'Bluetooth blocked — check permissions';
-            } else {
-                nameEl.textContent = 'Error: ' + msg;
-            }
         }
     }
 
@@ -1242,10 +1210,6 @@ const App = (() => {
 
     // --- Boot ---
     document.addEventListener('DOMContentLoaded', init);
-
-    // Expose connect functions globally for inline onclick fallback
-    window._connectTrainer = connectTrainer;
-    window._connectHRM = connectHRM;
 
     return { init };
 })();

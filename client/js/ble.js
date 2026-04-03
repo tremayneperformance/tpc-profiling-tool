@@ -225,19 +225,12 @@ const BLE = (() => {
     async function connectTrainer() {
         if (!isAvailable()) throw new Error('Web Bluetooth not available');
 
-        // Clean up any stale connection before starting a new one
-        if (trainerDevice && trainerDevice.gatt.connected) {
-            try { trainerDevice.gatt.disconnect(); } catch (_) {}
-        }
-        trainerDevice = null;
-        trainerServer = null;
-        trainerControlPoint = null;
-        fecTxCharacteristic = null;
-
-        // Match the exact pattern that works for HRM on Bluefy:
-        // single filter, no optionalServices, no namePrefix.
         const device = await navigator.bluetooth.requestDevice({
-            filters: [{ services: [UUID.ftms.service] }],
+            filters: [
+                { services: [UUID.ftms.service] },
+                { services: [UUID.fec.service] },
+            ],
+            optionalServices: [UUID.ftms.service, UUID.fec.service, UUID.cps.service],
         });
 
         device.addEventListener('gattserverdisconnected', () => {

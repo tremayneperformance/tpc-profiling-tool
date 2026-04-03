@@ -2638,6 +2638,8 @@ document.getElementById('ramp-save-btn').addEventListener('click', async () => {
   let savedCount = 0;
   let lastError = null;
 
+  let hrmaxUpdates = [];
+
   async function saveOne(data) {
     const payload = { athlete_name: name, result: data };
     if (weightKg) payload.weight_kg = weightKg;
@@ -2649,7 +2651,10 @@ document.getElementById('ramp-save-btn').addEventListener('click', async () => {
     if (paceStr) payload.threshold_pace = paceStr;
     const resp = await authFetch('/save_ramp_test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const result = await resp.json();
-    if (result.status === 'ok') savedCount++;
+    if (result.status === 'ok') {
+      savedCount++;
+      if (result.hrmax_updated) hrmaxUpdates.push(result.hrmax_updated);
+    }
     else lastError = result.message || 'Save failed.';
   }
 
@@ -2657,12 +2662,21 @@ document.getElementById('ramp-save-btn').addEventListener('click', async () => {
     if (bikeResult) await saveOne(bikeResult);
     if (runResult) await saveOne(runResult);
     if (savedCount > 0) {
-      confirmEl.textContent = savedCount === 2 ? 'Both saved!' : 'Saved!';
+      let confirmMsg = savedCount === 2 ? 'Both saved!' : 'Saved!';
+      // Auto-update HRmax input fields if observed peak was within 3%
+      for (const upd of hrmaxUpdates) {
+        const inputId = upd.field === 'hrmax_bike' ? 'ramp-hrmax-bike' : 'ramp-hrmax-run';
+        const el = document.getElementById(inputId);
+        if (el) el.value = upd.new_hrmax;
+        const sport = upd.field === 'hrmax_bike' ? 'Bike' : 'Run';
+        confirmMsg += ` ${sport} HRmax updated: ${upd.old_hrmax} → ${upd.new_hrmax} bpm (peak ${upd.observed_peak_hr}).`;
+      }
+      confirmEl.textContent = confirmMsg;
       confirmEl.hidden = false;
       loadHistory(name);
       loadAllTests();
       authFetch('/athlete_list').then(r => r.json()).then(d => { if (d.status === 'ok') athleteList = d.athletes || []; }).catch(() => {});
-      setTimeout(() => confirmEl.hidden = true, 3000);
+      setTimeout(() => confirmEl.hidden = true, hrmaxUpdates.length ? 8000 : 3000);
     }
     if (lastError) showRampStatus('bike', lastError, 'error');
   } catch (err) {

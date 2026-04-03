@@ -116,6 +116,10 @@ def create_app():
     def service_worker():
         return send_from_directory(client_dir, 'sw.js')
 
+    @app.route('/tpc_logo.png')
+    def tpc_logo():
+        return send_from_directory(client_dir, 'tpc_logo.png')
+
     # -----------------------------------------------------------------------
     # COACH ANALYSIS DASHBOARD
     # -----------------------------------------------------------------------

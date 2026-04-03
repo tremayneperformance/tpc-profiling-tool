@@ -366,6 +366,9 @@ h1, h2, h3 {
     letter-spacing: 0.1em;
     cursor: pointer;
     transition: all 0.3s var(--ease);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
 }
 .sport-btn .sport-icon {
     width: 36px;
@@ -482,18 +485,23 @@ h1, h2, h3 {
     color: var(--accent);
 }
 .btn-connect {
-    padding: 8px 18px;
+    padding: 12px 20px;
+    min-height: 44px;
+    min-width: 44px;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: transparent;
     color: var(--text-secondary);
     font-family: 'Inter', sans-serif;
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     font-weight: 600;
     letter-spacing: 0.08em;
     cursor: pointer;
     transition: all 0.2s var(--ease);
     text-transform: uppercase;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
 }
 .btn-connect:hover {
     border-color: var(--accent);
@@ -583,6 +591,9 @@ body.sport-run .protocol-segment.max-effort { background: var(--red); }
     transition: all 0.3s var(--ease);
     position: relative;
     overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
 }
 .btn-start:disabled {
     opacity: 0.35;
@@ -885,6 +896,7 @@ body.sport-run .protocol-segment.max-effort { background: var(--red); }
     align-items: center;
     gap: 8px;
     padding: 12px 24px;
+    min-height: 44px;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--bg-card);
@@ -896,6 +908,9 @@ body.sport-run .protocol-segment.max-effort { background: var(--red); }
     cursor: pointer;
     transition: all 0.2s var(--ease);
     text-transform: uppercase;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
 }
 .btn-control svg {
     width: 16px;
@@ -985,6 +1000,7 @@ body.sport-run .protocol-segment.max-effort { background: var(--red); }
     align-items: center;
     gap: 8px;
     padding: 12px 20px;
+    min-height: 44px;
     background: var(--bg-input);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -995,6 +1011,8 @@ body.sport-run .protocol-segment.max-effort { background: var(--red); }
     letter-spacing: 0.04em;
     cursor: pointer;
     transition: all 0.2s var(--ease);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 .btn-export:hover {
     border-color: var(--accent);
@@ -1003,35 +1021,132 @@ body.sport-run .protocol-segment.max-effort { background: var(--red); }
 }
 
 /* ============================================
-   RESPONSIVE
+   RESPONSIVE — Mobile-first testing UI
    ============================================ */
+
+/* Safe area insets for notched phones */
+@supports (padding: env(safe-area-inset-bottom)) {
+    .screen {
+        padding-left: max(20px, env(safe-area-inset-left));
+        padding-right: max(20px, env(safe-area-inset-right));
+        padding-bottom: max(40px, env(safe-area-inset-bottom));
+    }
+    .app-header {
+        padding-left: max(24px, env(safe-area-inset-left));
+        padding-right: max(24px, env(safe-area-inset-right));
+    }
+}
+
 @media (max-width: 640px) {
+    /* --- Setup screen --- */
     .form-grid {
         grid-template-columns: 1fr;
     }
     .form-group.full-width {
         grid-column: 1;
     }
+    .form-group input {
+        font-size: 1rem;
+        padding: 12px 14px;
+    }
+
+    /* Device connection — larger tap targets */
+    .device-slot {
+        padding: 14px;
+        gap: 12px;
+    }
+    .btn-connect {
+        padding: 12px 16px;
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+    .device-label {
+        font-size: 0.8rem;
+    }
+    .device-name {
+        font-size: 0.75rem;
+    }
+
+    /* Protocol preview */
+    .protocol-stages {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+
+    /* --- Test screen --- */
     .primary-metrics {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
     }
     .big-value {
         font-size: 2.8rem;
     }
-    .results-grid {
+    .big-metric {
+        padding: 20px 12px;
+    }
+    .secondary-metrics {
         grid-template-columns: repeat(2, 1fr);
     }
+    .small-metric {
+        padding: 12px 8px;
+    }
+
     .test-controls {
         flex-wrap: wrap;
+        gap: 8px;
+    }
+    .btn-control {
+        flex: 1 1 auto;
+        justify-content: center;
+        padding: 14px 16px;
+        font-size: 0.7rem;
+    }
+
+    .chart-section {
+        height: 200px;
+        padding: 12px;
+    }
+
+    .hrv-status-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 10px 14px;
+    }
+    .hrv-stats {
+        gap: 12px;
+    }
+
+    /* --- Results screen --- */
+    .results-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
     .export-buttons {
         flex-direction: column;
     }
-    .metrics-bar {
-        grid-template-columns: 1fr 1fr 1fr;
+
+    /* --- Preflight modal --- */
+    .preflight-modal {
+        padding: 20px;
+        max-height: 90vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
-    .secondary-metrics {
-        grid-template-columns: repeat(2, 1fr);
+    .preflight-live {
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+    }
+    .preflight-metric {
+        padding: 12px 6px;
+    }
+    .preflight-metric-value {
+        font-size: 1.3rem;
+    }
+    .preflight-actions {
+        flex-direction: column-reverse;
+        gap: 10px;
+    }
+    .preflight-actions .btn-stop {
+        width: 100%;
+        justify-content: center;
     }
 }
 
@@ -1039,14 +1154,66 @@ body.sport-run .protocol-segment.max-effort { background: var(--red); }
     .app-header {
         padding: 12px 16px;
     }
-    .card {
-        padding: 18px;
+    .header-title {
+        font-size: 0.7rem;
     }
+    .header-subtitle {
+        font-size: 0.55rem;
+    }
+    .status-chip {
+        font-size: 0.6rem;
+        padding: 3px 8px;
+    }
+
+    .card {
+        padding: 16px;
+        margin-top: 14px;
+    }
+
+    /* Stack device slots vertically with full-width connect button */
+    .device-slot {
+        flex-wrap: wrap;
+    }
+    .btn-connect {
+        width: 100%;
+        padding: 14px 16px;
+        font-size: 0.8rem;
+        text-align: center;
+    }
+
     .big-value {
         font-size: 2.2rem;
     }
+    .big-metric {
+        padding: 16px 8px;
+    }
+
+    .primary-metrics {
+        grid-template-columns: 1fr 1fr;
+    }
+
     .results-grid {
         grid-template-columns: 1fr 1fr;
+    }
+
+    .metric-cell {
+        padding: 10px 8px;
+    }
+    .metric-value {
+        font-size: 0.95rem;
+    }
+
+    .preflight-live {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+    .preflight-metric-value {
+        font-size: 1.1rem;
+    }
+
+    .btn-control {
+        padding: 14px 12px;
+        font-size: 0.65rem;
+        gap: 6px;
     }
 }
 

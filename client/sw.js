@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dfa-ramp-v12';
+const CACHE_NAME = 'dfa-ramp-v13';
 const ASSETS = [
     '/index.html',
     '/css/style.css',

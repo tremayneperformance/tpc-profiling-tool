@@ -251,9 +251,9 @@ const App = (() => {
         if (coachNav) coachNav.style.display = 'none';
         document.getElementById('btn-logout').style.display = 'none';
         document.getElementById('login-step-email').style.display = '';
-        document.getElementById('login-step-pin').style.display = 'none';
+        document.getElementById('login-step-set-password').style.display = 'none';
         document.getElementById('login-email').value = '';
-        document.getElementById('login-pin').value = '';
+        document.getElementById('login-password').value = '';
         hideLoginError();
 
         showScreen('login-screen');

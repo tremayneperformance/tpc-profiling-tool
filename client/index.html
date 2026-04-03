@@ -13,30 +13,21 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <!-- Coach Nav Bar (hidden until coach login) -->
-    <nav id="coach-nav" class="top-nav" style="display:none;">
+    <!-- Unified Nav Bar -->
+    <nav id="app-nav" class="top-nav">
         <div class="top-nav-inner">
             <a href="/" class="top-nav-brand"><img src="tpc_logo.png" alt="TPC" class="top-nav-logo"></a>
-            <div class="top-nav-links">
+            <div class="top-nav-links" id="nav-links" style="display:none;">
                 <a href="/" class="active">Test Tool</a>
                 <a href="/analysis">Analysis</a>
                 <a href="/admin">Data</a>
             </div>
-            <button class="top-nav-logout" onclick="localStorage.removeItem('auth_token');localStorage.removeItem('auth_user');window.location='/';">Logout</button>
+            <div class="top-nav-right">
+                <span id="ble-status" class="status-chip disconnected" style="display:none">NO DEVICES</span>
+                <button id="btn-logout" class="top-nav-logout" style="display:none">Logout</button>
+            </div>
         </div>
     </nav>
-
-    <!-- Header -->
-    <header class="app-header">
-        <div class="header-brand">
-            <h1 class="header-title">TREMAYNE PERFORMANCE</h1>
-            <span class="header-subtitle">DFA A1 RAMP TEST</span>
-        </div>
-        <div class="header-status">
-            <span id="ble-status" class="status-chip disconnected">NO DEVICES</span>
-            <button id="btn-logout" class="btn-logout" style="display:none">LOGOUT</button>
-        </div>
-    </header>
 
     <!-- Login Screen -->
     <main id="login-screen" class="screen active">

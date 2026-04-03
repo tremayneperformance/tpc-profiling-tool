@@ -138,25 +138,11 @@
     color: #ef4444;
     border-color: #ef4444;
 }
-
-/* --- Login & Logout --- */
-.btn-logout {
-    background: transparent;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #ef4444;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 0.65rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    padding: 0.35rem 0.75rem;
-    border-radius: 6px;
-    cursor: pointer;
-    margin-left: 0.5rem;
-    transition: all 0.2s;
-}
-.btn-logout:hover {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: #ef4444;
+.top-nav-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
 }
 
 #login-screen .card {
@@ -270,20 +256,7 @@ h1, h2, h3 {
     display: block;
 }
 
-/* --- Header --- */
-.app-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 24px;
-    border-bottom: 1px solid var(--border);
-    background: rgba(14, 15, 18, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
+/* --- Header (legacy — kept for analysis/admin pages) --- */
 .header-title {
     font-size: 0.85rem;
     font-weight: 700;
@@ -1155,12 +1128,6 @@ body.sport-run .protocol-segment.max-effort { background: var(--red); }
 @media (max-width: 400px) {
     .app-header {
         padding: 12px 16px;
-    }
-    .header-title {
-        font-size: 0.7rem;
-    }
-    .header-subtitle {
-        font-size: 0.55rem;
     }
     .status-chip {
         font-size: 0.6rem;

@@ -228,11 +228,12 @@ const App = (() => {
         }
 
         document.getElementById('btn-logout').style.display = '';
+        document.getElementById('ble-status').style.display = '';
 
-        // Show coach nav bar for coach/dev logins
-        const coachNav = document.getElementById('coach-nav');
-        if (coachNav && currentUser && currentUser.role === 'coach') {
-            coachNav.style.display = '';
+        // Show nav links for coach logins
+        const navLinks = document.getElementById('nav-links');
+        if (navLinks && currentUser && currentUser.role === 'coach') {
+            navLinks.style.display = '';
         }
 
         showScreen('setup-screen');
@@ -247,9 +248,10 @@ const App = (() => {
         localStorage.removeItem('auth_user');
 
         // Reset UI
-        const coachNav = document.getElementById('coach-nav');
-        if (coachNav) coachNav.style.display = 'none';
+        const navLinks = document.getElementById('nav-links');
+        if (navLinks) navLinks.style.display = 'none';
         document.getElementById('btn-logout').style.display = 'none';
+        document.getElementById('ble-status').style.display = 'none';
         document.getElementById('login-step-email').style.display = '';
         document.getElementById('login-step-set-password').style.display = 'none';
         document.getElementById('login-email').value = '';

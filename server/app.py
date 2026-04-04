@@ -89,6 +89,7 @@ def create_app():
         # Add columns that create_all() won't add to existing tables
         _migrate_add_columns(app)
         _ensure_coach_account(app)
+        _seed_dummy_athletes(app)
 
     # -----------------------------------------------------------------------
     # STATIC FILE SERVING — PWA client files
@@ -1358,6 +1359,42 @@ def _ensure_coach_account(app):
         db.session.add(coach)
         db.session.commit()
         print(f'[SETUP] Coach account created: {coach_email}')
+
+
+def _seed_dummy_athletes(app):
+    """Create dummy test athletes on first run if they don't exist."""
+    dummy_users = [
+        {'name': 'Alex Demo', 'email': 'alex@demo.tpc', 'sport': 'both',
+         'threshold_power': 220, 'threshold_pace': '4:30',
+         'hrmax_bike': 185, 'hrmax_run': 187, 'weight_kg': 72},
+        {'name': 'Jordan Demo', 'email': 'jordan@demo.tpc', 'sport': 'bike',
+         'threshold_power': 280, 'hrmax_bike': 190, 'weight_kg': 78},
+        {'name': 'Sam Demo', 'email': 'sam@demo.tpc', 'sport': 'bike',
+         'threshold_power': 200, 'hrmax_bike': 178, 'weight_kg': 64.5},
+    ]
+    created = 0
+    for u in dummy_users:
+        if User.query.filter_by(email=u['email']).first():
+            continue
+        user = User(
+            email=u['email'],
+            name=u['name'],
+            role='athlete',
+            approved=True,
+            password_hash=hash_password('tpc'),
+            password_must_change=True,
+            sport=u.get('sport'),
+            threshold_power=u.get('threshold_power'),
+            threshold_pace=u.get('threshold_pace'),
+            hrmax_bike=u.get('hrmax_bike'),
+            hrmax_run=u.get('hrmax_run'),
+            weight_kg=u.get('weight_kg'),
+        )
+        db.session.add(user)
+        created += 1
+    if created:
+        db.session.commit()
+        print(f'[SETUP] Created {created} dummy athlete account(s)')
 
 
 # ---------------------------------------------------------------------------

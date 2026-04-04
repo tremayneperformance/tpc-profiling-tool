@@ -2256,9 +2256,9 @@ def compute_data_quality(windows, stage_data, warmup_end, ramp_start,
 # MAIN PIPELINE
 # ═══════════════════════════════════════════════════════════════════════════
 
-def analyze_ramp_test(file_bytes, segments_override=None,
+def analyze_ramp_test(file_bytes=None, segments_override=None,
                       protocol_type='bike', threshold_pace_sec=None,
-                      tte_duration_sec=None):
+                      tte_duration_sec=None, dfa_result=None):
     """
     Complete ramp test analysis pipeline.
 
@@ -2268,12 +2268,17 @@ def analyze_ramp_test(file_bytes, segments_override=None,
         protocol_type: 'bike' or 'run'
         threshold_pace_sec: For run protocol, threshold pace in sec/km
         tte_duration_sec: For run protocol, manual TTE duration (or -1 to skip)
+        dfa_result: Optional pre-computed DFA result dict (skips FIT parsing).
+                    Must contain: parsed, windows, rr_times, artifact_mask, artifact_pct, rr_clean.
 
     Returns comprehensive analysis result.
     """
     threshold_speed = None  # Default; set in is_run branch
     # Part 2: Full-file DFA computation
-    dfa_result = compute_full_file_dfa(file_bytes)
+    if dfa_result is None:
+        if file_bytes is None:
+            return {'status': 'error', 'message': 'No file data or pre-computed DFA result provided.'}
+        dfa_result = compute_full_file_dfa(file_bytes)
     if dfa_result['status'] != 'ok':
         return dfa_result
 

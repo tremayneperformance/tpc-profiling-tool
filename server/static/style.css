@@ -42,7 +42,7 @@ body {
 .container {
   max-width: 1100px;
   margin: 0 auto;
-  overflow: hidden;
+  overflow-x: hidden;
   padding: 0 20px 40px;
 }
 
@@ -2542,8 +2542,8 @@ section, details, .sport-section, .profile-section, .insights-panel,
 .qual-acceptable { color: #f59e0b; }
 .qual-poor      { color: #ef4444; }
 
-/* Pad main content so fixed bar doesn't overlap */
-body { padding-bottom: 36px; }
+/* Pad main content so fixed bars don't overlap */
+body { padding-bottom: 80px; }
 
 /* ============================================================
    Export PDF Button

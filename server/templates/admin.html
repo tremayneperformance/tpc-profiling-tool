@@ -76,17 +76,8 @@
       <button class="admin-tab" data-tab="sessions">Test Sessions</button>
     </div>
 
-    <!-- ADD ATHLETE FORM -->
+    <!-- USERS TABLE -->
     <section id="tab-users" class="admin-tab-content">
-      <div class="card" style="padding:1rem 1.25rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-        <strong style="font-size:0.85rem;white-space:nowrap;">Add Athlete</strong>
-        <input id="add-name" type="text" placeholder="Name" style="flex:1;min-width:120px;padding:0.4rem 0.6rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.85rem;">
-        <input id="add-email" type="email" placeholder="Email" style="flex:1.5;min-width:180px;padding:0.4rem 0.6rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.85rem;">
-        <button id="add-athlete-btn" class="btn-primary" style="padding:0.4rem 1rem;font-size:0.85rem;white-space:nowrap;">Add</button>
-        <span id="add-athlete-msg" style="font-size:0.8rem;display:none;"></span>
-      </div>
-
-      <!-- USERS TABLE -->
       <table class="admin-table" id="users-table">
         <thead>
           <tr>
@@ -100,7 +91,6 @@
             <th style="width:70px">HR Run</th>
             <th style="width:90px">Threshold</th>
             <th style="width:130px">Last Login</th>
-            <th style="width:150px">Actions</th>
           </tr>
         </thead>
         <tbody id="users-tbody"></tbody>
@@ -144,81 +134,9 @@
       </div>
     </div>
 
-    <!-- EDIT ATHLETE MODAL -->
-    <div id="edit-modal" class="modal-overlay" style="display:none;">
-      <div class="modal-content" style="max-width:480px;">
-        <div class="modal-header">
-          <h3 id="edit-modal-title">Edit Athlete</h3>
-          <button id="edit-modal-close" class="modal-close-btn">&times;</button>
-        </div>
-        <div class="modal-body" style="padding:1.25rem;">
-          <input type="hidden" id="edit-id">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
-            <div style="grid-column:1/-1;">
-              <label style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.25rem;display:block;">Name</label>
-              <input id="edit-name" type="text" class="edit-input">
-            </div>
-            <div style="grid-column:1/-1;">
-              <label style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.25rem;display:block;">Email</label>
-              <input id="edit-email" type="email" class="edit-input">
-            </div>
-            <div>
-              <label style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.25rem;display:block;">Weight (kg)</label>
-              <input id="edit-weight" type="number" step="0.1" class="edit-input">
-            </div>
-            <div>
-              <label style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.25rem;display:block;">Approved</label>
-              <select id="edit-approved" class="edit-input">
-                <option value="1">Yes</option>
-                <option value="0">No</option>
-              </select>
-            </div>
-            <div>
-              <label style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.25rem;display:block;">HRmax Bike</label>
-              <input id="edit-hrmax-bike" type="number" class="edit-input">
-            </div>
-            <div>
-              <label style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.25rem;display:block;">HRmax Run</label>
-              <input id="edit-hrmax-run" type="number" class="edit-input">
-            </div>
-            <div>
-              <label style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.25rem;display:block;">Threshold Power (W)</label>
-              <input id="edit-threshold-power" type="number" class="edit-input">
-            </div>
-            <div>
-              <label style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.25rem;display:block;">Threshold Pace</label>
-              <input id="edit-threshold-pace" type="text" placeholder="e.g. 4:30" class="edit-input">
-            </div>
-          </div>
-          <div style="margin-top:1.25rem;display:flex;gap:0.75rem;justify-content:space-between;align-items:center;">
-            <button id="edit-reset-pw" class="btn-warn" style="font-size:0.8rem;padding:0.35rem 0.75rem;">Reset Password</button>
-            <div style="display:flex;gap:0.5rem;">
-              <button id="edit-cancel" class="btn-secondary" style="font-size:0.8rem;padding:0.35rem 0.75rem;">Cancel</button>
-              <button id="edit-save" class="btn-primary" style="font-size:0.8rem;padding:0.35rem 0.75rem;">Save</button>
-            </div>
-          </div>
-          <p id="edit-msg" style="font-size:0.8rem;margin-top:0.75rem;display:none;"></p>
-        </div>
-      </div>
-    </div>
-
   </div><!-- /admin-content -->
 </div><!-- /container -->
 
-<style>
-  .edit-input{width:100%;padding:0.4rem 0.6rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.85rem;box-sizing:border-box;}
-  .btn-primary{background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;}
-  .btn-primary:hover{opacity:0.9;}
-  .btn-secondary{background:var(--surface);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;cursor:pointer;}
-  .btn-warn{background:#ef4444;color:#fff;border:none;border-radius:6px;cursor:pointer;}
-  .btn-warn:hover{opacity:0.9;}
-  .btn-sm{font-size:0.75rem;padding:0.25rem 0.5rem;border-radius:4px;cursor:pointer;border:none;font-weight:500;}
-  .btn-sm-edit{background:var(--accent);color:#fff;}
-  .btn-sm-reset{background:#f59e0b;color:#fff;}
-  .btn-sm-delete{background:#ef4444;color:#fff;}
-  .btn-sm:hover{opacity:0.85;}
-  .action-btns{display:flex;gap:0.35rem;flex-wrap:wrap;}
-</style>
 <script>
 (function() {
   // ------- AUTH -------
@@ -251,11 +169,41 @@
     }
   }
 
+  document.getElementById('auth-login-btn').addEventListener('click', async () => {
+    const pw = document.getElementById('auth-password').value.trim();
+    const errEl = document.getElementById('auth-error');
+    errEl.style.display = 'none';
+    if (!pw) return;
+    try {
+      const resp = await fetch('/api/auth/dev-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      });
+      const data = await resp.json();
+      if (data.status === 'ok') {
+        token = data.token;
+        localStorage.setItem('auth_token', token);
+        showContent();
+      } else {
+        errEl.textContent = data.message || 'Login failed.';
+        errEl.style.display = '';
+      }
+    } catch {
+      errEl.textContent = 'Network error.';
+      errEl.style.display = '';
+    }
+  });
+
+  document.getElementById('auth-password').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('auth-login-btn').click();
+  });
+
+  // Logout handled by inline onclick on nav button
+
   // ------- API HELPERS -------
-  function api(url, opts) {
-    const headers = { 'Authorization': 'Bearer ' + token };
-    if (opts && opts.body) headers['Content-Type'] = 'application/json';
-    return fetch(url, { headers, ...opts }).then(r => r.json());
+  function api(url) {
+    return fetch(url, { headers: { 'Authorization': 'Bearer ' + token } }).then(r => r.json());
   }
 
   function fmt(val, fallback) { return val != null ? val : (fallback || '-'); }
@@ -279,15 +227,6 @@
     return n.toLocaleString();
   }
 
-  // ------- FLASH MESSAGE -------
-  function flashMsg(el, text, isError) {
-    el.textContent = text;
-    el.style.color = isError ? '#ef4444' : '#22c55e';
-    el.style.display = '';
-    clearTimeout(el._timer);
-    el._timer = setTimeout(() => { el.style.display = 'none'; }, 4000);
-  }
-
   // ------- LOAD DATA -------
   async function loadAll() {
     loadStats();
@@ -309,199 +248,29 @@
     } catch(e) { console.error('Stats load failed', e); }
   }
 
-  // ------- USERS (with actions) -------
-  let usersCache = [];
-
   async function loadUsers() {
     try {
       const data = await api('/api/admin/all-users');
       if (data.status !== 'ok') return;
-      usersCache = data.users;
-      renderUsers();
+      const tbody = document.getElementById('users-tbody');
+      const empty = document.getElementById('users-empty');
+      if (!data.users.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+      empty.style.display = 'none';
+      tbody.innerHTML = data.users.map(u => `<tr>
+        <td>${u.id}</td>
+        <td>${esc(u.name)}</td>
+        <td>${esc(u.email)}</td>
+        <td><span class="badge badge-${u.role}">${u.role}</span></td>
+        <td>${u.role === 'coach' ? '-' : (u.approved ? '<span class="badge badge-yes">Yes</span>' : '<span class="badge badge-no">No</span>')}</td>
+        <td>${fmt(u.weight_kg)}</td>
+        <td>${fmt(u.hrmax_bike)}</td>
+        <td>${fmt(u.hrmax_run)}</td>
+        <td>${u.threshold_power ? u.threshold_power + ' W' : (u.threshold_pace || '-')}</td>
+        <td>${fmtDate(u.last_login)}</td>
+      </tr>`).join('');
     } catch(e) { console.error('Users load failed', e); }
   }
 
-  function renderUsers() {
-    const tbody = document.getElementById('users-tbody');
-    const empty = document.getElementById('users-empty');
-    if (!usersCache.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
-    empty.style.display = 'none';
-    tbody.innerHTML = usersCache.map(u => `<tr>
-      <td>${u.id}</td>
-      <td>${esc(u.name)}</td>
-      <td>${esc(u.email)}</td>
-      <td><span class="badge badge-${u.role}">${u.role}</span></td>
-      <td>${u.role === 'coach' ? '-' : (u.approved ? '<span class="badge badge-yes">Yes</span>' : '<span class="badge badge-no">No</span>')}</td>
-      <td>${fmt(u.weight_kg)}</td>
-      <td>${fmt(u.hrmax_bike)}</td>
-      <td>${fmt(u.hrmax_run)}</td>
-      <td>${u.threshold_power ? u.threshold_power + ' W' : (u.threshold_pace || '-')}</td>
-      <td>${fmtDate(u.last_login)}</td>
-      <td>${u.role === 'coach' ? '' : `<div class="action-btns">
-        <button class="btn-sm btn-sm-edit" data-uid="${u.id}">Edit</button>
-        <button class="btn-sm btn-sm-reset" data-uid="${u.id}" data-action="reset">Reset PW</button>
-        <button class="btn-sm btn-sm-delete" data-uid="${u.id}" data-action="delete">Delete</button>
-      </div>`}</td>
-    </tr>`).join('');
-
-    // Bind action buttons
-    tbody.querySelectorAll('.btn-sm-edit').forEach(btn => {
-      btn.addEventListener('click', () => openEditModal(parseInt(btn.dataset.uid)));
-    });
-    tbody.querySelectorAll('[data-action="reset"]').forEach(btn => {
-      btn.addEventListener('click', () => resetPassword(parseInt(btn.dataset.uid)));
-    });
-    tbody.querySelectorAll('[data-action="delete"]').forEach(btn => {
-      btn.addEventListener('click', () => deleteAthlete(parseInt(btn.dataset.uid)));
-    });
-  }
-
-  // ------- ADD ATHLETE -------
-  document.getElementById('add-athlete-btn').addEventListener('click', async () => {
-    const nameEl = document.getElementById('add-name');
-    const emailEl = document.getElementById('add-email');
-    const msgEl = document.getElementById('add-athlete-msg');
-    const name = nameEl.value.trim();
-    const email = emailEl.value.trim();
-    if (!name || !email) return flashMsg(msgEl, 'Name and email required.', true);
-
-    try {
-      const data = await api('/api/admin/athletes', {
-        method: 'POST',
-        body: JSON.stringify({ name, email }),
-      });
-      if (data.status === 'ok') {
-        flashMsg(msgEl, 'Athlete added (password: tpc)', false);
-        nameEl.value = '';
-        emailEl.value = '';
-        loadUsers();
-        loadStats();
-      } else {
-        flashMsg(msgEl, data.message || 'Failed to add.', true);
-      }
-    } catch(e) {
-      flashMsg(msgEl, 'Network error.', true);
-    }
-  });
-
-  // ------- RESET PASSWORD (inline) -------
-  async function resetPassword(uid) {
-    const user = usersCache.find(u => u.id === uid);
-    if (!user) return;
-    if (!confirm('Reset password for ' + user.name + ' to "tpc"?')) return;
-    try {
-      const data = await api('/api/admin/athletes/' + uid, {
-        method: 'PUT',
-        body: JSON.stringify({ password_reset: true }),
-      });
-      if (data.status === 'ok') {
-        alert('Password reset to "tpc". They will be prompted to change it on next login.');
-      } else {
-        alert(data.message || 'Reset failed.');
-      }
-    } catch(e) {
-      alert('Network error.');
-    }
-  }
-
-  // ------- DELETE ATHLETE -------
-  async function deleteAthlete(uid) {
-    const user = usersCache.find(u => u.id === uid);
-    if (!user) return;
-    if (!confirm('Delete athlete "' + user.name + '" and all their test data? This cannot be undone.')) return;
-    try {
-      const data = await api('/api/admin/athletes/' + uid, { method: 'DELETE' });
-      if (data.status === 'ok') {
-        loadUsers();
-        loadStats();
-        loadSessions();
-      } else {
-        alert(data.message || 'Delete failed.');
-      }
-    } catch(e) {
-      alert('Network error.');
-    }
-  }
-
-  // ------- EDIT ATHLETE MODAL -------
-  function openEditModal(uid) {
-    const user = usersCache.find(u => u.id === uid);
-    if (!user) return;
-    document.getElementById('edit-id').value = user.id;
-    document.getElementById('edit-name').value = user.name || '';
-    document.getElementById('edit-email').value = user.email || '';
-    document.getElementById('edit-weight').value = user.weight_kg || '';
-    document.getElementById('edit-approved').value = user.approved ? '1' : '0';
-    document.getElementById('edit-hrmax-bike').value = user.hrmax_bike || '';
-    document.getElementById('edit-hrmax-run').value = user.hrmax_run || '';
-    document.getElementById('edit-threshold-power').value = user.threshold_power || '';
-    document.getElementById('edit-threshold-pace').value = user.threshold_pace || '';
-    document.getElementById('edit-msg').style.display = 'none';
-    document.getElementById('edit-modal-title').textContent = 'Edit — ' + user.name;
-    document.getElementById('edit-modal').style.display = 'flex';
-  }
-
-  document.getElementById('edit-save').addEventListener('click', async () => {
-    const uid = document.getElementById('edit-id').value;
-    const msgEl = document.getElementById('edit-msg');
-    const payload = {
-      name: document.getElementById('edit-name').value.trim(),
-      email: document.getElementById('edit-email').value.trim(),
-      weight_kg: parseFloat(document.getElementById('edit-weight').value) || null,
-      approved: document.getElementById('edit-approved').value === '1',
-      hrmax_bike: parseInt(document.getElementById('edit-hrmax-bike').value) || null,
-      hrmax_run: parseInt(document.getElementById('edit-hrmax-run').value) || null,
-      threshold_power: parseInt(document.getElementById('edit-threshold-power').value) || null,
-      threshold_pace: document.getElementById('edit-threshold-pace').value.trim() || null,
-    };
-    if (!payload.name || !payload.email) return flashMsg(msgEl, 'Name and email required.', true);
-
-    try {
-      const data = await api('/api/admin/athletes/' + uid, {
-        method: 'PUT',
-        body: JSON.stringify(payload),
-      });
-      if (data.status === 'ok') {
-        document.getElementById('edit-modal').style.display = 'none';
-        loadUsers();
-      } else {
-        flashMsg(msgEl, data.message || 'Save failed.', true);
-      }
-    } catch(e) {
-      flashMsg(msgEl, 'Network error.', true);
-    }
-  });
-
-  document.getElementById('edit-reset-pw').addEventListener('click', async () => {
-    const uid = document.getElementById('edit-id').value;
-    const msgEl = document.getElementById('edit-msg');
-    if (!confirm('Reset password to "tpc"?')) return;
-    try {
-      const data = await api('/api/admin/athletes/' + uid, {
-        method: 'PUT',
-        body: JSON.stringify({ password_reset: true }),
-      });
-      if (data.status === 'ok') {
-        flashMsg(msgEl, 'Password reset to "tpc".', false);
-      } else {
-        flashMsg(msgEl, data.message || 'Reset failed.', true);
-      }
-    } catch(e) {
-      flashMsg(msgEl, 'Network error.', true);
-    }
-  });
-
-  document.getElementById('edit-cancel').addEventListener('click', () => {
-    document.getElementById('edit-modal').style.display = 'none';
-  });
-  document.getElementById('edit-modal-close').addEventListener('click', () => {
-    document.getElementById('edit-modal').style.display = 'none';
-  });
-  document.getElementById('edit-modal').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
-  });
-
-  // ------- SESSIONS -------
   async function loadSessions() {
     try {
       const data = await api('/api/admin/all-sessions');
@@ -526,6 +295,7 @@
         <td>${s.archetype ? '<span class="badge badge-yes">Yes</span>' : '<span class="badge badge-no">No</span>'}</td>
       </tr>`).join('');
 
+      // Click to open detail
       tbody.querySelectorAll('.clickable-row').forEach(row => {
         row.addEventListener('click', () => openSessionDetail(row.dataset.sid));
       });
@@ -563,6 +333,7 @@
       html += detailItem('Weight', s.weight_kg ? s.weight_kg + ' kg' : '-');
       html += '</div>';
 
+      // Analysis results
       if (s.archetype) {
         html += '<h4 style="margin:1.5rem 0 0.75rem;color:var(--accent);">Analysis Results</h4>';
         html += '<div class="detail-grid">';
@@ -573,11 +344,13 @@
         html += '</div>';
       }
 
+      // Early ramp end
       if (s.early_ramp_end) {
         html += '<h4 style="margin:1.5rem 0 0.75rem;color:var(--accent);">Early Ramp Termination</h4>';
         html += '<pre class="detail-pre">' + esc(typeof s.early_ramp_end === 'string' ? s.early_ramp_end : JSON.stringify(s.early_ramp_end, null, 2)) + '</pre>';
       }
 
+      // Sample records
       if (s.sample_records && s.sample_records.length) {
         html += '<h4 style="margin:1.5rem 0 0.75rem;color:var(--accent);">Sample Data (first 50 records)</h4>';
         html += '<div style="overflow-x:auto;"><table class="admin-table compact">';

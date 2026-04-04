@@ -148,7 +148,6 @@ RUN_RACE_PACE_BANDS = {
 # History file
 HISTORY_DIR = Path.home() / '.dfatool'
 HISTORY_FILE = HISTORY_DIR / 'history.json'
-RESULTS_DIR = HISTORY_DIR / 'results'
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2749,48 +2748,11 @@ def save_ramp_test_result(athlete_name, result):
         if result.get('threshold_pace'):
             record['threshold_pace'] = result['threshold_pace']
 
-        # Save full result to individual file for later recall
-        result_id = _save_full_result(result)
-        if result_id:
-            record['result_id'] = result_id
-
         athlete['ramp_tests'].append(record)
         _save_history(history)
         return True
     except Exception:
         return False
-
-
-def _save_full_result(result):
-    """Save full analysis result to an individual JSON file. Returns the result_id."""
-    import hashlib
-    try:
-        RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-        # Build a unique ID from timestamp + protocol type
-        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
-        sport = result.get('protocol_type', 'bike')
-        result_id = f'{ts}_{sport}'
-        filepath = RESULTS_DIR / f'{result_id}.json'
-
-        # Strip FIT binary data before saving (too large)
-        save_data = {k: v for k, v in result.items() if k != 'fit_file_data'}
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(save_data, f, ensure_ascii=False)
-        return result_id
-    except Exception:
-        return None
-
-
-def load_full_result(result_id):
-    """Load a full analysis result by result_id. Returns dict or None."""
-    try:
-        filepath = RESULTS_DIR / f'{result_id}.json'
-        if not filepath.exists():
-            return None
-        with open(filepath, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception:
-        return None
 
 
 def get_ramp_test_history(athlete_name):

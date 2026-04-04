@@ -281,37 +281,12 @@
             </div>
         </div>
 
-        <!-- Max Effort / MAP Overlay — dims page, shows only timer + done button -->
-        <div id="effort-overlay" class="effort-overlay" style="display:none;">
-            <div class="effort-overlay-content">
-                <div class="effort-overlay-label" id="effort-overlay-label">MAX EFFORT</div>
-                <div class="effort-overlay-timer" id="effort-overlay-timer">0:00</div>
-                <div class="effort-overlay-total" id="effort-overlay-total">of 6:00</div>
-                <div class="effort-overlay-target" id="effort-overlay-target"></div>
-                <button class="btn-tte-done" id="btn-tte-done">I'M DONE</button>
-                <p class="effort-overlay-hint">Tap when you can't hold the effort any longer</p>
-            </div>
-        </div>
-
-        <!-- No-pedaling detection overlay (bike only) -->
-        <div id="no-pedaling-overlay" class="effort-overlay" style="display:none;">
-            <div class="effort-overlay-content">
-                <div class="effort-overlay-label" style="color:#f59e0b;">NO PEDALING DETECTED</div>
-                <p class="effort-overlay-hint" style="margin:1rem 0;">It looks like you've stopped.</p>
-                <button class="btn-tte-done" id="btn-no-pedaling-done">I'M DONE</button>
-                <p class="effort-overlay-hint">proceed to cooldown</p>
-                <button class="btn-no-pedaling-resume" id="btn-no-pedaling-resume">KEEP GOING</button>
-            </div>
-        </div>
-
-        <!-- Run cooldown transition overlay (shown after TTE "I'm done") -->
-        <div id="cooldown-transition-overlay" class="effort-overlay" style="display:none;">
-            <div class="effort-overlay-content">
-                <div class="effort-overlay-label" style="color:#22c55e;">WELL DONE</div>
-                <p class="effort-overlay-hint" style="margin:1rem 0;font-size:0.9rem;color:rgba(255,255,255,0.6);">When you're ready, get back on the treadmill and hit start.</p>
-                <button class="btn-tte-done" id="btn-start-cooldown" style="background:linear-gradient(135deg,#059669,#10b981);border-color:rgba(16,185,129,0.5);box-shadow:0 0 30px rgba(16,185,129,0.3);">START COOLDOWN</button>
-                <p class="effort-overlay-hint" id="cooldown-pace-hint">set treadmill to ---</p>
-            </div>
+        <!-- TTE / Max Effort — Large "I'M DONE" button (hidden until TTE/max effort phase) -->
+        <div id="tte-done-section" class="tte-done-section" style="display:none;">
+            <button class="btn-tte-done" id="btn-tte-done">
+                I'M DONE
+            </button>
+            <p class="tte-done-hint">Tap when you can't hold the effort any longer</p>
         </div>
 
         <!-- Controls -->
@@ -327,6 +302,12 @@
                     <path d="M5 4l10 8-10 8V4zM19 4v16"/>
                 </svg>
                 SKIP STAGE
+            </button>
+            <button class="btn-control btn-stop" id="btn-stop">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                    <rect x="4" y="4" width="16" height="16" rx="2"/>
+                </svg>
+                STOP
             </button>
         </div>
     </main>

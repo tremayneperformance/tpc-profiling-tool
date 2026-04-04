@@ -10,7 +10,6 @@ Routes:
   /api/admin/*         → Athlete management (coach only)
 """
 
-import io
 import os
 import gzip
 import json

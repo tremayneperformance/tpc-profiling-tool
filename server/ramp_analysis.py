@@ -16,7 +16,6 @@ All detection is power-pattern based — FIT lap markers are never used.
 """
 
 import json
-import gzip
 import uuid
 import numpy as np
 from scipy import stats

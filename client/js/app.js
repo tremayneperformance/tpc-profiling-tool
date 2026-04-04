@@ -393,6 +393,13 @@ const App = (() => {
             document.getElementById('slot-trainer').classList.add('connected');
             btn.textContent = 'CONNECTED';
             btn.classList.add('connected');
+
+            // Safety net: explicitly set flag and update button
+            // (handleConnectionChange should also do this via BLE callback,
+            //  but ensure it happens even if callback timing varies)
+            trainerConnected = true;
+            updateBLEStatus();
+            updateStartButton();
         } catch (e) {
             btn.textContent = 'CONNECT';
             btn.disabled = false;

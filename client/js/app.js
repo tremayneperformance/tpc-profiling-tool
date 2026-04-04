@@ -41,6 +41,7 @@ const App = (() => {
     let chart = null;
     let chartData = { labels: [], power: [], hr: [], target: [] };
     const MAX_CHART_POINTS = 600;
+    let latestDFA = null;  // Most recent DFA alpha1 value for live chart
 
     let audioCtx = null;
 
@@ -981,6 +982,7 @@ const App = (() => {
         const dfaZone = document.getElementById('dfa-zone-label');
 
         if (dfa !== null) {
+            latestDFA = dfa;
             dfaEl.textContent = dfa.toFixed(2);
 
             if (dfa >= 0.75) {
@@ -1013,6 +1015,19 @@ const App = (() => {
         const ctx = document.getElementById('live-chart').getContext('2d');
         if (chart) chart.destroy();
 
+        const dfaDataset = {
+            label: 'DFA \u03b11',
+            data: [],
+            borderColor: '#22c55e',
+            backgroundColor: 'rgba(34, 197, 94, 0.08)',
+            borderWidth: 2,
+            pointRadius: 0,
+            yAxisID: 'yDFA',
+            fill: false,
+            tension: 0.4,
+            spanGaps: true,
+        };
+
         const datasets = [
             {
                 label: 'Heart Rate',
@@ -1025,6 +1040,7 @@ const App = (() => {
                 fill: true,
                 tension: 0.3,
             },
+            dfaDataset,
         ];
 
         if (sport === 'bike') {
@@ -1053,9 +1069,40 @@ const App = (() => {
             );
         }
 
+        // Custom plugin: draw horizontal DFA threshold reference lines
+        const dfaThresholdLines = {
+            id: 'dfaThresholdLines',
+            afterDraw(chart) {
+                const yAxis = chart.scales.yDFA;
+                if (!yAxis) return;
+                const ctx = chart.ctx;
+                const left = chart.chartArea.left;
+                const right = chart.chartArea.right;
+
+                [{ val: 0.75, color: 'rgba(34,197,94,0.35)', label: 'LT1' },
+                 { val: 0.50, color: 'rgba(239,68,68,0.35)', label: 'LT2' }].forEach(ref => {
+                    const y = yAxis.getPixelForValue(ref.val);
+                    if (y < chart.chartArea.top || y > chart.chartArea.bottom) return;
+                    ctx.save();
+                    ctx.strokeStyle = ref.color;
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([6, 4]);
+                    ctx.beginPath();
+                    ctx.moveTo(left, y);
+                    ctx.lineTo(right, y);
+                    ctx.stroke();
+                    ctx.fillStyle = ref.color;
+                    ctx.font = '9px Inter, sans-serif';
+                    ctx.fillText(ref.label + ' (' + ref.val + ')', right - 52, y - 3);
+                    ctx.restore();
+                });
+            },
+        };
+
         chart = new Chart(ctx, {
             type: 'line',
             data: { labels: [], datasets },
+            plugins: [dfaThresholdLines],
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -1095,6 +1142,19 @@ const App = (() => {
                         grid: { drawOnChartArea: sport !== 'bike', color: 'rgba(255,255,255,0.03)' },
                         beginAtZero: false,
                     },
+                    yDFA: {
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: 'DFA \u03b11', color: '#22c55e', font: { size: 10 } },
+                        ticks: { color: '#22c55e', font: { size: 9 } },
+                        grid: { drawOnChartArea: false },
+                        min: 0,
+                        max: 1.5,
+                        afterBuildTicks(axis) {
+                            // Add threshold reference lines at 0.75 and 0.50
+                            axis.ticks = [0, 0.25, 0.50, 0.75, 1.0, 1.25, 1.5].map(v => ({ value: v }));
+                        },
+                    },
                 },
             },
         });
@@ -1104,6 +1164,9 @@ const App = (() => {
         const label = Protocol.formatTime(elapsedSec);
         chart.data.labels.push(label);
 
+        // Find the DFA dataset (last dataset in the array)
+        const dfaIdx = chart.data.datasets.length - 1;
+
         if (sport === 'bike') {
             chart.data.datasets[0].data.push(latestPower);
             chart.data.datasets[1].data.push(state.phase.target);
@@ -1111,6 +1174,9 @@ const App = (() => {
         } else {
             chart.data.datasets[0].data.push(latestHR);
         }
+
+        // Push DFA value (null if not yet available — spanGaps handles it)
+        chart.data.datasets[dfaIdx].data.push(latestDFA);
 
         if (chart.data.labels.length > MAX_CHART_POINTS) {
             chart.data.labels.shift();

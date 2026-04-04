@@ -41,6 +41,8 @@ const App = (() => {
     let chart = null;
     let chartData = { labels: [], power: [], hr: [], target: [] };
     const MAX_CHART_POINTS = 600;
+    let latestDFA = null;  // Most recent DFA alpha1 value for live chart
+    let noPedalingSeconds = 0;  // Counter for consecutive seconds with no/very low power
 
     let audioCtx = null;
 
@@ -295,12 +297,21 @@ const App = (() => {
         });
 
         document.getElementById('btn-tte-done').addEventListener('click', tteDone);
+        document.getElementById('btn-no-pedaling-done').addEventListener('click', () => {
+            document.getElementById('no-pedaling-overlay').style.display = 'none';
+            tteDone();
+        });
+        document.getElementById('btn-no-pedaling-resume').addEventListener('click', () => {
+            document.getElementById('no-pedaling-overlay').style.display = 'none';
+            noPedalingSeconds = 0;
+            mapPowerDropSec = 0;
+        });
+        document.getElementById('btn-start-cooldown').addEventListener('click', startCooldown);
         document.getElementById('btn-start').addEventListener('click', openPreflight);
         document.getElementById('btn-preflight-confirm').addEventListener('click', confirmAndStart);
         document.getElementById('btn-preflight-cancel').addEventListener('click', closePreflight);
         document.getElementById('btn-pause').addEventListener('click', togglePause);
         document.getElementById('btn-skip').addEventListener('click', skipStage);
-        document.getElementById('btn-stop').addEventListener('click', stopTest);
         document.getElementById('btn-new-test').addEventListener('click', resetToSetup);
 
         document.getElementById('btn-export-fit').addEventListener('click', () => {
@@ -382,6 +393,11 @@ const App = (() => {
             document.getElementById('slot-trainer').classList.add('connected');
             btn.textContent = 'CONNECTED';
             btn.classList.add('connected');
+
+            // Safety net: explicitly set flag and update button
+            trainerConnected = true;
+            updateBLEStatus();
+            updateStartButton();
         } catch (e) {
             btn.textContent = 'CONNECT';
             btn.disabled = false;
@@ -709,6 +725,26 @@ const App = (() => {
             stageNum: state.phase.stageNum || null,
         });
 
+        // --- Effort overlay timer update (run TTE only) ---
+        if (state.phase.id === Protocol.PHASE.TTE) {
+            document.getElementById('effort-overlay-timer').textContent =
+                Protocol.formatTime(Math.floor(state.phaseElapsed));
+            document.getElementById('effort-overlay-target').textContent = '';
+        }
+
+        // --- No-pedaling detection (bike MAP ramp only) ---
+        if (sport === 'bike' && state.phase.isMaxEffort) {
+            if (latestPower != null && latestPower < state.phase.target * 0.30) {
+                noPedalingSeconds++;
+                if (noPedalingSeconds >= 8) {
+                    document.getElementById('no-pedaling-overlay').style.display = 'flex';
+                }
+            } else {
+                noPedalingSeconds = 0;
+                document.getElementById('no-pedaling-overlay').style.display = 'none';
+            }
+        }
+
         updateTestUI(state);
         updateChart(state);
     }
@@ -733,13 +769,11 @@ const App = (() => {
 
             if (stageDFA !== null) {
                 lastCompletedStageDFA = stageDFA;
-                console.log(`Stage ${prevPhase.stageNum} DFA: ${stageDFA.toFixed(3)}`);
 
                 if (hrvt2StageCompleted && state.phase.id === Protocol.PHASE.RAMP) {
                     // hrvt2 was flagged on a PREVIOUS stage, and the athlete
                     // has now completed one full additional stage — trigger early end.
                     const completedStage = prevPhase.stageNum;
-                    console.log(`Early ramp termination after stage ${completedStage}`);
 
                     Data.setEarlyRampEnd({
                         stage: completedStage,
@@ -752,7 +786,6 @@ const App = (() => {
                     const recoveryIdx = phases.findIndex(p => p.id === Protocol.PHASE.RECOVERY);
                     if (recoveryIdx > state.index) {
                         const removed = phases.splice(state.index, recoveryIdx - state.index);
-                        console.log(`Removed ${removed.length} remaining ramp stages`);
 
                         // Rebuild progress segments to reflect shorter test
                         buildProgressSegments();
@@ -771,7 +804,7 @@ const App = (() => {
                 // must complete one more full stage first.
                 if (stageDFA < HRVT2_THRESHOLD && !hrvt2StageCompleted) {
                     hrvt2StageCompleted = true;
-                    console.log(`HRVT2 reached at stage ${prevPhase.stageNum} (DFA=${stageDFA.toFixed(3)}) — one more full stage required`);
+
                 }
             }
         }
@@ -802,12 +835,21 @@ const App = (() => {
         // Audio cue
         playBeep(state.phase.id === Protocol.PHASE.MAX_EFFORT || state.phase.id === Protocol.PHASE.TTE ? 880 : 660);
 
-        // Show/hide TTE / Max Effort "I'M DONE" button
-        const tteSection = document.getElementById('tte-done-section');
-        if (state.phase.id === Protocol.PHASE.TTE || state.phase.id === Protocol.PHASE.MAX_EFFORT) {
-            tteSection.style.display = '';
+        // Show/hide effort overlay for RUN TTE only (bike uses normal UI with no-pedaling detection)
+        const effortOverlay = document.getElementById('effort-overlay');
+        if (state.phase.id === Protocol.PHASE.TTE) {
+            effortOverlay.style.display = 'flex';
+            document.getElementById('effort-overlay-label').textContent = 'TIME TO EXHAUSTION';
+            document.getElementById('effort-overlay-total').textContent =
+                'of ' + Protocol.formatTime(state.phase.duration);
+        } else if (state.phase.id === Protocol.PHASE.MAX_EFFORT) {
+            // Bike MAP ramp: no overlay, just reset no-pedaling counter
+            noPedalingSeconds = 0;
         } else {
-            tteSection.style.display = 'none';
+            effortOverlay.style.display = 'none';
+            document.getElementById('no-pedaling-overlay').style.display = 'none';
+            document.getElementById('cooldown-transition-overlay').style.display = 'none';
+            noPedalingSeconds = 0;
         }
 
         // Update progress segments
@@ -830,25 +872,54 @@ const App = (() => {
             return; // Safety — only works during TTE/max effort
         }
 
-        // Record the actual TTE duration
+        // Record the actual effort duration within current phase
         const phasesBeforeCurrent = phases.slice(0, state.index);
         const phaseStartElapsed = phasesBeforeCurrent.reduce((sum, p) => sum + p.duration, 0);
         const actualDuration = elapsedSec - phaseStartElapsed;
 
-        console.log(`TTE/Max effort ended by athlete after ${actualDuration.toFixed(1)}s`);
 
-        // Shorten the current phase to end now, so the protocol advances to cooldown
+        // Shorten current phase to end now
         phases[state.index].duration = actualDuration;
+
+        // Remove any remaining MAP ramp steps after this one (skip to cooldown)
+        const cooldownIdx = phases.findIndex(p => p.id === Protocol.PHASE.COOLDOWN);
+        if (cooldownIdx > state.index + 1) {
+            phases.splice(state.index + 1, cooldownIdx - state.index - 1);
+            buildProgressSegments();
+        }
 
         // Jump elapsed time to the end of this phase
         const newElapsed = phaseStartElapsed + actualDuration;
         const adjustment = (newElapsed - elapsedSec) * 1000;
         startTimestamp -= adjustment;
 
-        // Hide the button
-        document.getElementById('tte-done-section').style.display = 'none';
+        // Hide overlays
+        document.getElementById('effort-overlay').style.display = 'none';
+        document.getElementById('no-pedaling-overlay').style.display = 'none';
 
-        // Notification beep
+        if (sport === 'run') {
+            // Run: show cooldown transition overlay with treadmill pace
+            const cooldownPhase = phases.find(p => p.id === Protocol.PHASE.COOLDOWN);
+            const paceHint = cooldownPhase
+                ? `set treadmill to ${cooldownPhase.targetDisplay}`
+                : '';
+            document.getElementById('cooldown-pace-hint').textContent = paceHint;
+            document.getElementById('cooldown-transition-overlay').style.display = 'flex';
+
+            // Pause the test while athlete gets back on treadmill
+            if (!isPaused) togglePause();
+        } else {
+            // Bike: proceed directly to cooldown
+            playBeep(440, 0.3);
+        }
+    }
+
+    /**
+     * "START COOLDOWN" button handler — resumes test after run TTE.
+     */
+    function startCooldown() {
+        document.getElementById('cooldown-transition-overlay').style.display = 'none';
+        if (isPaused) togglePause();
         playBeep(440, 0.3);
     }
 
@@ -858,29 +929,8 @@ const App = (() => {
      */
     function mapRampFailure(state) {
         if (!isRunning) return;
-        console.log(`MAP ramp: power drop detected at stage ${state.phase.label}, skipping to cooldown`);
-
-        // Truncate current MAP stage to end now
-        const phasesBeforeCurrent = phases.slice(0, state.index);
-        const phaseStartElapsed = phasesBeforeCurrent.reduce((sum, p) => sum + p.duration, 0);
-        const actualDuration = Math.max(1, elapsedSec - phaseStartElapsed);
-        phases[state.index].duration = actualDuration;
-
-        // Remove remaining MAP stages (keep cooldown)
-        const cooldownIndex = phases.findIndex((p, i) => i > state.index && p.id === Protocol.PHASE.COOLDOWN);
-        if (cooldownIndex > state.index + 1) {
-            phases.splice(state.index + 1, cooldownIndex - state.index - 1);
-        }
-
-        // Jump elapsed time to end of truncated phase
-        const newElapsed = phaseStartElapsed + actualDuration;
-        const adjustment = (newElapsed - elapsedSec) * 1000;
-        startTimestamp -= adjustment;
-
-        // Reset drop counter and set ERG to cooldown power
-        mapPowerDropSec = 0;
-        document.getElementById('tte-done-section').style.display = 'none';
-        playBeep(440, 0.3);
+        // Show the no-pedaling overlay — athlete decides to stop or continue
+        document.getElementById('no-pedaling-overlay').style.display = 'flex';
     }
 
     function togglePause() {
@@ -906,12 +956,6 @@ const App = (() => {
         const adjustment = (newElapsed - elapsedSec) * 1000;
         startTimestamp -= adjustment;
         playBeep(440);
-    }
-
-    function stopTest() {
-        if (confirm('End the test now? Data collected so far will be saved.')) {
-            completeTest();
-        }
     }
 
     async function completeTest() {
@@ -958,7 +1002,7 @@ const App = (() => {
 
             // Target display: show context-appropriate target
             if (state.phase.isMaxEffort) {
-                document.getElementById('metric-target-power').textContent = 'MAX';
+                document.getElementById('metric-target-power').textContent = state.phase.target;
             } else if (state.phase.id === Protocol.PHASE.RECOVERY && state.phaseElapsed >= state.phase.duration / 2) {
                 // Second half of recovery — ERG off, athlete spinning up
                 document.getElementById('metric-target-power').textContent = 'FREE';
@@ -1019,6 +1063,7 @@ const App = (() => {
         const dfaZone = document.getElementById('dfa-zone-label');
 
         if (dfa !== null) {
+            latestDFA = dfa;
             dfaEl.textContent = dfa.toFixed(2);
 
             if (dfa >= 0.75) {
@@ -1051,6 +1096,19 @@ const App = (() => {
         const ctx = document.getElementById('live-chart').getContext('2d');
         if (chart) chart.destroy();
 
+        const dfaDataset = {
+            label: 'DFA \u03b11',
+            data: [],
+            borderColor: '#22c55e',
+            backgroundColor: 'rgba(34, 197, 94, 0.08)',
+            borderWidth: 2,
+            pointRadius: 0,
+            yAxisID: 'yDFA',
+            fill: false,
+            tension: 0.4,
+            spanGaps: true,
+        };
+
         const datasets = [
             {
                 label: 'Heart Rate',
@@ -1063,6 +1121,7 @@ const App = (() => {
                 fill: true,
                 tension: 0.3,
             },
+            dfaDataset,
         ];
 
         if (sport === 'bike') {
@@ -1091,9 +1150,40 @@ const App = (() => {
             );
         }
 
+        // Custom plugin: draw horizontal DFA threshold reference lines
+        const dfaThresholdLines = {
+            id: 'dfaThresholdLines',
+            afterDraw(chart) {
+                const yAxis = chart.scales.yDFA;
+                if (!yAxis) return;
+                const ctx = chart.ctx;
+                const left = chart.chartArea.left;
+                const right = chart.chartArea.right;
+
+                [{ val: 0.75, color: 'rgba(34,197,94,0.35)', label: 'LT1' },
+                 { val: 0.50, color: 'rgba(239,68,68,0.35)', label: 'LT2' }].forEach(ref => {
+                    const y = yAxis.getPixelForValue(ref.val);
+                    if (y < chart.chartArea.top || y > chart.chartArea.bottom) return;
+                    ctx.save();
+                    ctx.strokeStyle = ref.color;
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([6, 4]);
+                    ctx.beginPath();
+                    ctx.moveTo(left, y);
+                    ctx.lineTo(right, y);
+                    ctx.stroke();
+                    ctx.fillStyle = ref.color;
+                    ctx.font = '9px Inter, sans-serif';
+                    ctx.fillText(ref.label + ' (' + ref.val + ')', right - 52, y - 3);
+                    ctx.restore();
+                });
+            },
+        };
+
         chart = new Chart(ctx, {
             type: 'line',
             data: { labels: [], datasets },
+            plugins: [dfaThresholdLines],
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -1133,6 +1223,18 @@ const App = (() => {
                         grid: { drawOnChartArea: sport !== 'bike', color: 'rgba(255,255,255,0.03)' },
                         beginAtZero: false,
                     },
+                    yDFA: {
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: 'DFA \u03b11', color: '#22c55e', font: { size: 10 } },
+                        ticks: { color: '#22c55e', font: { size: 9 } },
+                        grid: { drawOnChartArea: false },
+                        min: 0,
+                        max: 1.5,
+                        afterBuildTicks(axis) {
+                            axis.ticks = [0, 0.25, 0.50, 0.75, 1.0, 1.25, 1.5].map(v => ({ value: v }));
+                        },
+                    },
                 },
             },
         });
@@ -1142,6 +1244,9 @@ const App = (() => {
         const label = Protocol.formatTime(elapsedSec);
         chart.data.labels.push(label);
 
+        // DFA dataset is always the last one
+        const dfaIdx = chart.data.datasets.length - 1;
+
         if (sport === 'bike') {
             chart.data.datasets[0].data.push(latestPower);
             chart.data.datasets[1].data.push(state.phase.target);
@@ -1149,6 +1254,9 @@ const App = (() => {
         } else {
             chart.data.datasets[0].data.push(latestHR);
         }
+
+        // Push DFA value (null if not yet available — spanGaps handles it)
+        chart.data.datasets[dfaIdx].data.push(latestDFA);
 
         if (chart.data.labels.length > MAX_CHART_POINTS) {
             chart.data.labels.shift();

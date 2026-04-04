@@ -3,15 +3,58 @@
    Design System: Dark Technical Interface
    ============================================ */
 
-/* --- TTE / Max Effort "I'M DONE" button --- */
-.tte-done-section {
-    text-align: center;
-    padding: 1rem 20px;
-    animation: ttePulseIn 0.4s ease-out;
+/* --- Full-page effort overlay (TTE, no-pedaling, cooldown transition) --- */
+.effort-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: overlayFadeIn 0.3s ease-out;
 }
-@keyframes ttePulseIn {
-    0% { opacity: 0; transform: scale(0.9); }
-    100% { opacity: 1; transform: scale(1); }
+@keyframes overlayFadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+.effort-overlay-content {
+    text-align: center;
+    padding: 2rem;
+    max-width: 400px;
+    width: 90%;
+}
+.effort-overlay-label {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #ef4444;
+    margin-bottom: 1.5rem;
+}
+.effort-overlay-timer {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 4rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+}
+.effort-overlay-total {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 1.5rem;
+}
+.effort-overlay-target {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.4);
+    margin-bottom: 1rem;
+}
+.effort-overlay-hint {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+    letter-spacing: 0.03em;
 }
 .btn-tte-done {
     display: inline-block;
@@ -33,6 +76,7 @@
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     user-select: none;
+    margin-top: 1.5rem;
 }
 .btn-tte-done:hover {
     transform: scale(1.02);
@@ -42,11 +86,27 @@
     transform: scale(0.97);
     background: linear-gradient(135deg, #b91c1c, #dc2626);
 }
-.tte-done-hint {
-    color: var(--text-dim);
-    font-size: 0.75rem;
-    margin-top: 0.5rem;
-    letter-spacing: 0.03em;
+.btn-no-pedaling-resume {
+    display: inline-block;
+    width: 100%;
+    max-width: 400px;
+    padding: 1rem 1.5rem;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.7);
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    cursor: pointer;
+    margin-top: 1rem;
+    transition: background 0.2s, border-color 0.2s;
+}
+.btn-no-pedaling-resume:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.4);
 }
 
 /* --- Power warning (recovery phase, power too high) --- */
@@ -256,23 +316,6 @@ h1, h2, h3 {
     display: block;
 }
 
-/* --- Header (legacy — kept for analysis/admin pages) --- */
-.header-title {
-    font-size: 0.85rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    color: var(--text-primary);
-}
-.header-subtitle {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.65rem;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    color: var(--accent);
-    text-transform: uppercase;
-    display: block;
-    margin-top: 2px;
-}
 .status-chip {
     font-family: 'Inter', sans-serif;
     font-size: 0.65rem;
@@ -1238,10 +1281,7 @@ body.sport-run .protocol-segment.max-effort { background: var(--red); }
         font-size: 0.6rem;
     }
 
-    /* TTE button */
-    .tte-done-section {
-        padding: 0.75rem 12px;
-    }
+    /* Overlay button mobile */
     .btn-tte-done {
         padding: 1.4rem 1.5rem;
         font-size: 1.3rem;

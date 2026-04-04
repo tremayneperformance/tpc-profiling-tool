@@ -9,7 +9,7 @@ Tables:
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -28,10 +28,11 @@ class User(db.Model):
     # Coach-only: password hash for persistent login
     password_hash = db.Column(db.String(128), nullable=True)
     password_must_change = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_login = db.Column(db.DateTime, nullable=True)
 
     # Athlete profile fields
+    sport = db.Column(db.String(10), nullable=True)  # 'bike', 'run', or 'both'
     weight_kg = db.Column(db.Float, nullable=True)
     hrmax_bike = db.Column(db.Integer, nullable=True)
     hrmax_run = db.Column(db.Integer, nullable=True)
@@ -49,6 +50,7 @@ class User(db.Model):
             'approved': self.approved,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None,
+            'sport': self.sport,
             'weight_kg': self.weight_kg,
             'hrmax_bike': self.hrmax_bike,
             'hrmax_run': self.hrmax_run,

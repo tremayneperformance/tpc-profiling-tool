@@ -260,6 +260,20 @@ def create_app():
             password_hash=hash_password('tpc'),
             password_must_change=True,
         )
+        # Optional profile fields on creation
+        if data.get('sport'):
+            user.sport = data['sport']
+        if data.get('weight_kg') is not None:
+            user.weight_kg = data['weight_kg']
+        if data.get('hrmax_bike') is not None:
+            user.hrmax_bike = data['hrmax_bike']
+        if data.get('hrmax_run') is not None:
+            user.hrmax_run = data['hrmax_run']
+        if data.get('threshold_power') is not None:
+            user.threshold_power = data['threshold_power']
+        if data.get('threshold_pace') is not None:
+            user.threshold_pace = data['threshold_pace']
+
         db.session.add(user)
         db.session.commit()
 
@@ -276,6 +290,15 @@ def create_app():
         data = request.get_json(silent=True) or {}
         if 'name' in data:
             user.name = data['name']
+        if 'email' in data:
+            new_email = str(data['email']).strip().lower()
+            if new_email and new_email != user.email:
+                conflict = User.query.filter_by(email=new_email).first()
+                if conflict:
+                    return jsonify({'status': 'error', 'message': 'Email already in use.'}), 409
+                user.email = new_email
+        if 'sport' in data:
+            user.sport = data['sport']
         if 'approved' in data:
             user.approved = bool(data['approved'])
         if 'weight_kg' in data:
@@ -288,6 +311,9 @@ def create_app():
             user.threshold_power = data['threshold_power']
         if 'threshold_pace' in data:
             user.threshold_pace = data['threshold_pace']
+        if data.get('password_reset'):
+            user.password_hash = hash_password('tpc')
+            user.password_must_change = True
 
         db.session.commit()
         return jsonify({'status': 'ok', 'athlete': user.to_dict()})
@@ -982,8 +1008,8 @@ def create_app():
         return jsonify(result)
 
     # -----------------------------------------------------------------------
-    # LEGACY ROUTE ALIASES — so existing analysis dashboard HTML works
-    # without rewriting all fetch() calls. All require coach auth.
+    # PRIMARY ROUTES — used by analysis dashboard templates.
+    # All require coach auth.
     # -----------------------------------------------------------------------
 
     @app.route('/athlete_list', methods=['GET'])
@@ -1256,6 +1282,18 @@ def create_app():
         averages = ftp_run_profiling.get_ftp_population_averages(sport)
         return jsonify({'status': 'ok', **averages})
 
+    @app.route('/ramp_test_full_result', methods=['GET'])
+    @coach_required
+    def ramp_test_full_result():
+        """Return a full saved analysis result by result_id."""
+        result_id = request.args.get('result_id', '').strip()
+        if not result_id:
+            return jsonify({'status': 'error', 'message': 'result_id required.'}), 400
+        result = ramp_analysis.load_full_result(result_id)
+        if result is None:
+            return jsonify({'status': 'error', 'message': 'Result not found.'}), 404
+        return jsonify({'status': 'ok', 'result': result})
+
     @app.route('/heartbeat', methods=['POST'])
     def legacy_heartbeat():
         return jsonify({'status': 'ok'})
@@ -1275,6 +1313,14 @@ def _migrate_add_columns(app):
     """Safely add new columns to existing tables (idempotent)."""
     from sqlalchemy import text, inspect
     insp = inspect(db.engine)
+
+    # Users: sport column
+    if 'users' in insp.get_table_names():
+        existing_user_cols = {c['name'] for c in insp.get_columns('users')}
+        with db.engine.begin() as conn:
+            if 'sport' not in existing_user_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN sport VARCHAR(10)"))
+                print('[MIGRATE] Added sport to users')
 
     # TestSession: fit_file_name, fit_file_data
     if 'test_sessions' in insp.get_table_names():

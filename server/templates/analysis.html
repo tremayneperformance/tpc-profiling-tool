@@ -2692,17 +2692,39 @@ async function loadHistory(athleteName) {
     window._historyTests = tests;
     window._historyAthlete = athleteName;
 
+    // Detect paired tests (bike+run within 10 days of each other)
+    const pairedIndices = new Set();
+    for (let i = 0; i < tests.length; i++) {
+      const ti = tests[i];
+      const tiSport = ti.protocol_type || 'bike';
+      const tiDate = ti.test_date ? new Date(ti.test_date) : null;
+      if (!tiDate) continue;
+      for (let j = i + 1; j < tests.length; j++) {
+        const tj = tests[j];
+        const tjSport = tj.protocol_type || 'bike';
+        if (tiSport === tjSport) continue;
+        const tjDate = tj.test_date ? new Date(tj.test_date) : null;
+        if (!tjDate) continue;
+        const diffDays = Math.abs(tiDate - tjDate) / (1000 * 60 * 60 * 24);
+        if (diffDays <= 10) { pairedIndices.add(i); pairedIndices.add(j); }
+      }
+    }
+
     tbody.innerHTML = tests.map((t, i) => {
       const sport = t.protocol_type || 'bike';
       const sportLabel = sport === 'run' ? 'Run' : 'Bike';
       const primaryValue = sport === 'run' ? (t.hrvt2_pace || t.hrvt2_power || '\u2014') : (t.hrvt2_power ? t.hrvt2_power + 'W' : '\u2014');
       const hrvt1cValue = sport === 'run' ? (t.hrvt1c_pace || t.hrvt1c_power || '\u2014') : (t.hrvt1c_power ? t.hrvt1c_power + 'W' : '\u2014');
       const hasFit = !!t.has_fit_file;
+      const hasFull = !!t.result_id;
       const reBtn = hasFit
         ? `<button class="history-btn-reanalyze" onclick="event.stopPropagation();reanalyzeTest('${athleteName}',${i})" title="Re-run full analysis from stored FIT file">Re-analyse</button>`
         : '';
+      let badges = '';
+      if (pairedIndices.has(i)) badges += '<span class="badge badge-combined" title="Paired bike+run test">Combined</span> ';
+      if (hasFull) badges += '<span class="badge badge-full" title="Full result available for chart recall">Full</span> ';
       return `<tr class="history-row-clickable" onclick="viewHistoryTest(${i})" title="Click to view results">
-        <td>${t.test_date ? t.test_date.split('T')[0] : '\u2014'}</td><td>${sportLabel}</td><td>${primaryValue}</td><td>${hrvt1cValue}</td>
+        <td>${t.test_date ? t.test_date.split('T')[0] : '\u2014'}</td><td>${sportLabel} ${badges}</td><td>${primaryValue}</td><td>${hrvt1cValue}</td>
         <td>${t.archetype || '\u2014'}</td><td>${t.regression_r2_power ? t.regression_r2_power.toFixed(3) : '\u2014'}</td><td>${t.data_quality || '\u2014'}</td>
         <td>${reBtn}<button class="history-btn-delete" onclick="event.stopPropagation();deleteRampTest('${athleteName}',${i})">Delete</button></td></tr>`;
     }).join('');
@@ -2746,11 +2768,37 @@ async function reanalyzeTest(athleteName, index) {
   }
 }
 
-function viewHistoryTest(index) {
+async function viewHistoryTest(index) {
   const tests = window._historyTests;
   if (!tests || !tests[index]) return;
   const t = tests[index];
   const sport = t.protocol_type || 'bike';
+
+  // If a full result is saved, fetch it and do full chart reconstruction
+  if (t.result_id) {
+    try {
+      const resp = await authFetch(`/ramp_test_full_result?result_id=${encodeURIComponent(t.result_id)}`);
+      const data = await resp.json();
+      if (data.status === 'ok' && data.result) {
+        if (sport === 'run') {
+          runResult = data.result;
+        } else {
+          bikeResult = data.result;
+        }
+        renderAllResults(data.result, sport);
+        updateSaveButton();
+        const section = document.getElementById(sport + '-results-section');
+        if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Auto-load companion test
+        autoLoadCompanion(index);
+        return;
+      }
+    } catch (err) {
+      console.warn('Full result fetch failed, falling back to summary view', err);
+    }
+  }
+
+  // Fallback: summary-only view (no charts)
   const pfx = sport + '-';
   const isRun = sport === 'run';
   const hrmax = getHRmax(sport);
@@ -2794,6 +2842,39 @@ function viewHistoryTest(index) {
   chartsDetails.forEach(d => d.hidden = true);
   document.getElementById(pfx + 'warnings-bar').hidden = true;
   document.getElementById(sport + '-results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Auto-load companion test
+  autoLoadCompanion(index);
+}
+
+function autoLoadCompanion(currentIndex) {
+  const tests = window._historyTests;
+  if (!tests || !tests[currentIndex]) return;
+  const current = tests[currentIndex];
+  const currentSport = current.protocol_type || 'bike';
+  const companionSport = currentSport === 'bike' ? 'run' : 'bike';
+  const currentDate = current.test_date ? new Date(current.test_date) : null;
+  if (!currentDate) return;
+
+  // Find the closest test of the complementary sport within 10 days
+  let bestIdx = -1;
+  let bestDiff = Infinity;
+  for (let i = 0; i < tests.length; i++) {
+    if (i === currentIndex) continue;
+    const t = tests[i];
+    const tSport = t.protocol_type || 'bike';
+    if (tSport !== companionSport) continue;
+    const tDate = t.test_date ? new Date(t.test_date) : null;
+    if (!tDate) continue;
+    const diffDays = Math.abs(currentDate - tDate) / (1000 * 60 * 60 * 24);
+    if (diffDays <= 10 && diffDays < bestDiff) {
+      bestDiff = diffDays;
+      bestIdx = i;
+    }
+  }
+  if (bestIdx >= 0) {
+    viewHistoryTest(bestIdx);
+  }
 }
 
 function renderTrendChart(tests) {

@@ -16,7 +16,7 @@ Coach:
 import os
 import secrets
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 import jwt
@@ -52,7 +52,7 @@ def set_pin_for_user(user):
     """Generate a PIN, store its hash, set expiry. Returns the plain PIN."""
     pin = generate_pin()
     user.pin_hash = hash_pin(pin)
-    user.pin_expires = datetime.utcnow() + timedelta(minutes=PIN_EXPIRY_MINUTES)
+    user.pin_expires = datetime.now(timezone.utc) + timedelta(minutes=PIN_EXPIRY_MINUTES)
     db.session.commit()
     return pin
 
@@ -61,7 +61,7 @@ def validate_pin(user, pin):
     """Check if PIN matches and hasn't expired."""
     if not user.pin_hash or not user.pin_expires:
         return False
-    if datetime.utcnow() > user.pin_expires:
+    if datetime.now(timezone.utc) > user.pin_expires:
         return False
     return user.pin_hash == hash_pin(pin)
 
@@ -93,8 +93,8 @@ def create_token(user):
         'email': user.email,
         'name': user.name,
         'role': user.role,
-        'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRY_HOURS),
-        'iat': datetime.utcnow(),
+        'exp': datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS),
+        'iat': datetime.now(timezone.utc),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
 

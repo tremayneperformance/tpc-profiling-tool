@@ -17,6 +17,7 @@ All detection is power-pattern based — FIT lap markers are never used.
 
 import json
 import gzip
+import uuid
 import numpy as np
 from scipy import stats
 from pathlib import Path
@@ -148,6 +149,7 @@ RUN_RACE_PACE_BANDS = {
 # History file
 HISTORY_DIR = Path.home() / '.dfatool'
 HISTORY_FILE = HISTORY_DIR / 'history.json'
+RESULTS_DIR = HISTORY_DIR / 'results'
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2689,6 +2691,31 @@ def _save_history(history):
         json.dump(history, f, indent=2, ensure_ascii=False)
 
 
+def _save_full_result(result):
+    """Save the complete analysis result dict as JSON, return a unique result_id."""
+    try:
+        RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+        result_id = str(uuid.uuid4())
+        filepath = RESULTS_DIR / f'{result_id}.json'
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(result, f, ensure_ascii=False, default=str)
+        return result_id
+    except Exception:
+        return None
+
+
+def load_full_result(result_id):
+    """Read a saved full result by its ID. Returns dict or None."""
+    try:
+        filepath = RESULTS_DIR / f'{result_id}.json'
+        if not filepath.exists():
+            return None
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
 def save_ramp_test_result(athlete_name, result):
     """Save a ramp test result to athlete history under 'ramp_tests' key."""
     try:
@@ -2747,6 +2774,11 @@ def save_ramp_test_result(athlete_name, result):
             record['hrmax_run'] = result['hrmax_run']
         if result.get('threshold_pace'):
             record['threshold_pace'] = result['threshold_pace']
+
+        # Save full result for later recall
+        result_id = _save_full_result(result)
+        if result_id:
+            record['result_id'] = result_id
 
         athlete['ramp_tests'].append(record)
         _save_history(history)

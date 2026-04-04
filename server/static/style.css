@@ -2490,6 +2490,31 @@ section, details, .sport-section, .profile-section, .insights-panel,
   margin-bottom: 0.5rem;
   flex-wrap: wrap;
 }
+.all-tests-tabs {
+  display: flex;
+  gap: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #2a2d35;
+}
+.all-tests-tab {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 0.3rem 0.8rem;
+  background: #1e2028;
+  color: #9ca3af;
+  border: none;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: background 0.2s, color 0.2s;
+}
+.all-tests-tab:hover { background: #2a2d35; color: #e5e7eb; }
+.all-tests-tab.active {
+  background: #7c3aed;
+  color: #ffffff;
+}
 .all-tests-filter {
   display: flex;
   align-items: center;
@@ -2541,8 +2566,8 @@ section, details, .sport-section, .profile-section, .insights-panel,
 .qual-acceptable { color: #f59e0b; }
 .qual-poor      { color: #ef4444; }
 
-/* Pad main content so fixed bars don't overlap */
-body { padding-bottom: 80px; }
+/* Pad main content so fixed bar doesn't overlap */
+body { padding-bottom: 40px; }
 
 /* ============================================================
    Export PDF Button

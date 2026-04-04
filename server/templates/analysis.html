@@ -596,42 +596,24 @@
   </div>
 </div>
 
-<!-- SAVED SESSIONS FROM DATABASE -->
-<div id="sessions-bar" class="all-tests-bar" style="bottom:40px;">
-  <button id="sessions-toggle" class="all-tests-toggle" onclick="toggleSessionsPanel()" style="background:linear-gradient(135deg,#1e3a5f,#1e293b);border-color:rgba(59,130,246,0.3);">
-    Saved Sessions <span id="sessions-arrow">&#9650;</span>
-  </button>
-  <div id="sessions-panel" class="all-tests-panel" hidden>
-    <div style="padding:0.5rem 1rem;font-size:0.8rem;color:#9ca3af;">
-      Tests uploaded from athletes. Click a row to load and analyse.
-    </div>
-    <div class="all-tests-table-wrap">
-      <table class="history-table all-tests-table">
-        <thead><tr>
-          <th>Athlete</th><th>Date</th><th>Sport</th><th>Duration</th>
-          <th>Peak Power</th><th>Peak HR</th><th>RR Count</th><th>Quality</th><th>Action</th>
-        </tr></thead>
-        <tbody id="sessions-tbody"></tbody>
-      </table>
-      <div id="sessions-empty" class="history-empty" hidden>No sessions found.</div>
-    </div>
-  </div>
-</div>
-
-<!-- ALL TESTS BOTTOM TAB -->
+<!-- BOTTOM PANEL — ALL DATA -->
 <div id="all-tests-bar" class="all-tests-bar">
   <button id="all-tests-toggle" class="all-tests-toggle" onclick="toggleAllTestsPanel()">
     All Tests <span id="all-tests-arrow">&#9650;</span>
   </button>
   <div id="all-tests-panel" class="all-tests-panel" hidden>
     <div class="all-tests-toolbar">
-      <div class="all-tests-filter">
+      <div class="all-tests-tabs">
+        <button class="all-tests-tab active" id="tab-analysed" onclick="switchTestsTab('analysed')">Analysed</button>
+        <button class="all-tests-tab" id="tab-sessions" onclick="switchTestsTab('sessions')">Uploaded Sessions</button>
+      </div>
+      <div class="all-tests-filter" id="filter-athlete-wrap">
         <label for="all-tests-athlete-filter">Athlete</label>
         <select id="all-tests-athlete-filter" onchange="filterAllTests()">
           <option value="">All Athletes</option>
         </select>
       </div>
-      <div class="all-tests-filter">
+      <div class="all-tests-filter" id="filter-sport-wrap">
         <label for="all-tests-sport-filter">Sport</label>
         <select id="all-tests-sport-filter" onchange="filterAllTests()">
           <option value="">All</option>
@@ -641,7 +623,8 @@
       </div>
       <span id="all-tests-count" class="all-tests-count"></span>
     </div>
-    <div class="all-tests-table-wrap">
+    <!-- Analysed tests table -->
+    <div id="analysed-table-wrap" class="all-tests-table-wrap">
       <table class="history-table all-tests-table">
         <thead><tr>
           <th class="sortable" onclick="sortAllTests('athlete')">Athlete <span id="sort-athlete"></span></th>
@@ -656,7 +639,18 @@
         </tr></thead>
         <tbody id="all-tests-tbody"></tbody>
       </table>
-      <div id="all-tests-empty" class="history-empty" hidden>No test data saved yet.</div>
+      <div id="all-tests-empty" class="history-empty" hidden>No analysed tests yet.</div>
+    </div>
+    <!-- Uploaded sessions table -->
+    <div id="sessions-table-wrap" class="all-tests-table-wrap" hidden>
+      <table class="history-table all-tests-table">
+        <thead><tr>
+          <th>Athlete</th><th>Date</th><th>Sport</th><th>Duration</th>
+          <th>Peak Power</th><th>Peak HR</th><th>RR Count</th><th>Action</th>
+        </tr></thead>
+        <tbody id="sessions-tbody"></tbody>
+      </table>
+      <div id="sessions-empty" class="history-empty" hidden>No uploaded sessions found.</div>
     </div>
   </div>
 </div>
@@ -2920,12 +2914,38 @@ function renderTrendChart(tests) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// SAVED SESSIONS PANEL (database)
-function toggleSessionsPanel() {
-  const panel = document.getElementById('sessions-panel');
-  const arrow = document.getElementById('sessions-arrow');
-  if (panel.hidden) { panel.hidden = false; arrow.innerHTML = '&#9660;'; loadSessions(); }
-  else { panel.hidden = true; arrow.innerHTML = '&#9650;'; }
+// ALL TESTS BOTTOM PANEL (combined: analysed + uploaded sessions)
+// ═══════════════════════════════════════════════════════════════════
+let _allTests = [];
+let _allTestsSortCol = 'test_date';
+let _allTestsSortAsc = false;
+let _sessionsLoaded = false;
+let _activeTestsTab = 'analysed';
+
+function toggleAllTestsPanel() {
+  const panel = document.getElementById('all-tests-panel');
+  const arrow = document.getElementById('all-tests-arrow');
+  if (panel.hidden) {
+    panel.hidden = false;
+    arrow.innerHTML = '&#9660;';
+    loadAllTests();
+    if (_activeTestsTab === 'sessions' && !_sessionsLoaded) loadSessions();
+  } else {
+    panel.hidden = true;
+    arrow.innerHTML = '&#9650;';
+  }
+}
+
+function switchTestsTab(tab) {
+  _activeTestsTab = tab;
+  document.getElementById('tab-analysed').classList.toggle('active', tab === 'analysed');
+  document.getElementById('tab-sessions').classList.toggle('active', tab === 'sessions');
+  document.getElementById('analysed-table-wrap').hidden = (tab !== 'analysed');
+  document.getElementById('sessions-table-wrap').hidden = (tab !== 'sessions');
+  document.getElementById('filter-athlete-wrap').hidden = (tab !== 'analysed');
+  document.getElementById('filter-sport-wrap').hidden = (tab !== 'analysed');
+  document.getElementById('all-tests-count').hidden = (tab !== 'analysed');
+  if (tab === 'sessions' && !_sessionsLoaded) loadSessions();
 }
 
 async function loadSessions() {
@@ -2933,6 +2953,7 @@ async function loadSessions() {
     const resp = await authFetch('/api/analysis/sessions');
     const data = await resp.json();
     if (data.status !== 'ok') return;
+    _sessionsLoaded = true;
     const sessions = data.sessions || [];
     const tbody = document.getElementById('sessions-tbody');
     const empty = document.getElementById('sessions-empty');
@@ -2944,10 +2965,9 @@ async function loadSessions() {
       const peak_p = s.peak_power ? s.peak_power + 'W' : '\u2014';
       const peak_hr = s.peak_hr ? s.peak_hr + 'bpm' : '\u2014';
       const rr = s.rr_count || '\u2014';
-      const q = s.quality || '\u2014';
       return `<tr>
         <td>${esc(s.athlete_name || '\u2014')}</td><td>${date}</td><td>${s.sport || 'bike'}</td>
-        <td>${dur}</td><td>${peak_p}</td><td>${peak_hr}</td><td>${rr}</td><td>${q}</td>
+        <td>${dur}</td><td>${peak_p}</td><td>${peak_hr}</td><td>${rr}</td>
         <td><button class="history-btn-reanalyze" onclick="analyzeSession(${s.id},'${esc(s.athlete_name||'')}','${s.sport||'bike'}')">Analyse</button></td>
       </tr>`;
     }).join('');
@@ -2955,9 +2975,7 @@ async function loadSessions() {
 }
 
 async function analyzeSession(sessionId, athleteName, sport) {
-  // Pre-fill athlete name
   document.getElementById('ramp-athlete-name').value = athleteName;
-
   const statusEl = document.getElementById(sport === 'run' ? 'run-ramp-status' : 'bike-ramp-status');
   if (statusEl) { statusEl.textContent = 'Analysing session...'; statusEl.hidden = false; }
 
@@ -2969,11 +2987,8 @@ async function analyzeSession(sessionId, athleteName, sport) {
     });
     const data = await resp.json();
     if (data.status === 'ok' && data.result) {
-      if (sport === 'run') {
-        runResult = data.result;
-      } else {
-        bikeResult = data.result;
-      }
+      if (sport === 'run') { runResult = data.result; }
+      else { bikeResult = data.result; }
       renderAllResults(data.result, sport);
       updateSaveButton();
       const section = document.getElementById(sport + '-results-section');
@@ -2986,19 +3001,6 @@ async function analyzeSession(sessionId, athleteName, sport) {
   } catch (e) {
     if (statusEl) statusEl.textContent = 'Analysis failed: ' + e.message;
   }
-}
-
-// ALL TESTS BOTTOM PANEL
-// ═══════════════════════════════════════════════════════════════════
-let _allTests = [];
-let _allTestsSortCol = 'test_date';
-let _allTestsSortAsc = false;
-
-function toggleAllTestsPanel() {
-  const panel = document.getElementById('all-tests-panel');
-  const arrow = document.getElementById('all-tests-arrow');
-  if (panel.hidden) { panel.hidden = false; arrow.innerHTML = '&#9660;'; loadAllTests(); }
-  else { panel.hidden = true; arrow.innerHTML = '&#9650;'; }
 }
 
 async function loadAllTests() {

@@ -42,6 +42,7 @@ const App = (() => {
     let chartData = { labels: [], power: [], hr: [], target: [] };
     const MAX_CHART_POINTS = 600;
     let latestDFA = null;  // Most recent DFA alpha1 value for live chart
+    let noPedalingSeconds = 0;  // Counter for consecutive seconds with no/very low power
 
     let audioCtx = null;
 
@@ -291,12 +292,19 @@ const App = (() => {
         });
 
         document.getElementById('btn-tte-done').addEventListener('click', tteDone);
+        document.getElementById('btn-no-pedaling-done').addEventListener('click', () => {
+            document.getElementById('no-pedaling-overlay').style.display = 'none';
+            tteDone();
+        });
+        document.getElementById('btn-no-pedaling-resume').addEventListener('click', () => {
+            document.getElementById('no-pedaling-overlay').style.display = 'none';
+            noPedalingSeconds = 0;
+        });
         document.getElementById('btn-start').addEventListener('click', openPreflight);
         document.getElementById('btn-preflight-confirm').addEventListener('click', confirmAndStart);
         document.getElementById('btn-preflight-cancel').addEventListener('click', closePreflight);
         document.getElementById('btn-pause').addEventListener('click', togglePause);
         document.getElementById('btn-skip').addEventListener('click', skipStage);
-        document.getElementById('btn-stop').addEventListener('click', stopTest);
         document.getElementById('btn-new-test').addEventListener('click', resetToSetup);
 
         document.getElementById('btn-export-fit').addEventListener('click', () => {
@@ -666,8 +674,8 @@ const App = (() => {
         // --- Bike ERG mode control ---
         if (sport === 'bike') {
             if (state.phase.isMaxEffort) {
-                // Max effort: ERG off — athlete freewheels / selects own power
-                // (ERG was already disabled when we entered this phase)
+                // MAP ramp: ERG on with stepped targets
+                BLE.setTargetPower(state.phase.target);
             } else if (state.phase.id === Protocol.PHASE.RECOVERY) {
                 // Recovery: ERG on for first half, then off to let athlete spin up
                 const halfRecovery = state.phase.duration / 2;
@@ -706,6 +714,41 @@ const App = (() => {
             phase: state.phase.id,
             stageNum: state.phase.stageNum || null,
         });
+
+        // --- Effort overlay timer update ---
+        if (state.phase.id === Protocol.PHASE.MAX_EFFORT || state.phase.id === Protocol.PHASE.TTE) {
+            // Calculate elapsed time across all MAP steps (not just current step)
+            let effortElapsed = state.phaseElapsed;
+            if (state.phase.isMaxEffort) {
+                for (let i = 0; i < state.index; i++) {
+                    if (phases[i].isMaxEffort) effortElapsed += phases[i].duration;
+                }
+            }
+            document.getElementById('effort-overlay-timer').textContent =
+                Protocol.formatTime(Math.floor(effortElapsed));
+
+            // Show current target for MAP ramp steps
+            if (state.phase.isMaxEffort && state.phase.mapStage) {
+                document.getElementById('effort-overlay-target').textContent =
+                    `Step ${state.phase.mapStage}/${state.phase.mapTotal} — ${state.phase.target} W`;
+            } else {
+                document.getElementById('effort-overlay-target').textContent = '';
+            }
+        }
+
+        // --- No-pedaling detection (bike MAP ramp only) ---
+        if (sport === 'bike' && state.phase.isMaxEffort) {
+            if (latestPower != null && latestPower < state.phase.target * 0.30) {
+                noPedalingSeconds++;
+                if (noPedalingSeconds >= 8) {
+                    // Show no-pedaling overlay
+                    document.getElementById('no-pedaling-overlay').style.display = 'flex';
+                }
+            } else {
+                noPedalingSeconds = 0;
+                document.getElementById('no-pedaling-overlay').style.display = 'none';
+            }
+        }
 
         updateTestUI(state);
         updateChart(state);
@@ -784,8 +827,8 @@ const App = (() => {
         // --- Bike ERG transitions on phase change ---
         if (sport === 'bike') {
             if (state.phase.id === Protocol.PHASE.MAX_EFFORT) {
-                // Entering max effort — disable ERG (athlete controls power)
-                BLE.setTargetPower(0);
+                // Entering MAP ramp step — ERG on with target
+                BLE.setTargetPower(state.phase.target);
             } else if (state.phase.id === Protocol.PHASE.COOLDOWN) {
                 // Entering cooldown — re-enable ERG
                 BLE.setTargetPower(state.phase.target);
@@ -796,12 +839,28 @@ const App = (() => {
         // Audio cue
         playBeep(state.phase.id === Protocol.PHASE.MAX_EFFORT || state.phase.id === Protocol.PHASE.TTE ? 880 : 660);
 
-        // Show/hide TTE / Max Effort "I'M DONE" button
-        const tteSection = document.getElementById('tte-done-section');
+        // Show/hide effort overlay for MAP ramp and TTE phases
+        const effortOverlay = document.getElementById('effort-overlay');
         if (state.phase.id === Protocol.PHASE.TTE || state.phase.id === Protocol.PHASE.MAX_EFFORT) {
-            tteSection.style.display = '';
+            // Calculate total MAP/TTE duration for the "of X:XX" display
+            let totalEffortDuration = state.phase.duration;
+            if (state.phase.isMaxEffort) {
+                // Sum all remaining MAP ramp steps from current phase onward
+                totalEffortDuration = 0;
+                for (const p of phases) {
+                    if (p.isMaxEffort) totalEffortDuration += p.duration;
+                }
+            }
+            effortOverlay.style.display = 'flex';
+            document.getElementById('effort-overlay-label').textContent =
+                state.phase.isMaxEffort ? 'MAP RAMP' : 'TIME TO EXHAUSTION';
+            document.getElementById('effort-overlay-total').textContent =
+                'of ' + Protocol.formatTime(totalEffortDuration);
+            noPedalingSeconds = 0;
         } else {
-            tteSection.style.display = 'none';
+            effortOverlay.style.display = 'none';
+            document.getElementById('no-pedaling-overlay').style.display = 'none';
+            noPedalingSeconds = 0;
         }
 
         // Update progress segments
@@ -824,23 +883,31 @@ const App = (() => {
             return; // Safety — only works during TTE/max effort
         }
 
-        // Record the actual TTE duration
+        // Record the actual effort duration within current phase
         const phasesBeforeCurrent = phases.slice(0, state.index);
         const phaseStartElapsed = phasesBeforeCurrent.reduce((sum, p) => sum + p.duration, 0);
         const actualDuration = elapsedSec - phaseStartElapsed;
 
         console.log(`TTE/Max effort ended by athlete after ${actualDuration.toFixed(1)}s`);
 
-        // Shorten the current phase to end now, so the protocol advances to cooldown
+        // Shorten current phase to end now
         phases[state.index].duration = actualDuration;
+
+        // Remove any remaining MAP ramp steps after this one (skip to cooldown)
+        const cooldownIdx = phases.findIndex(p => p.id === Protocol.PHASE.COOLDOWN);
+        if (cooldownIdx > state.index + 1) {
+            phases.splice(state.index + 1, cooldownIdx - state.index - 1);
+            buildProgressSegments();
+        }
 
         // Jump elapsed time to the end of this phase
         const newElapsed = phaseStartElapsed + actualDuration;
         const adjustment = (newElapsed - elapsedSec) * 1000;
         startTimestamp -= adjustment;
 
-        // Hide the button
-        document.getElementById('tte-done-section').style.display = 'none';
+        // Hide overlays
+        document.getElementById('effort-overlay').style.display = 'none';
+        document.getElementById('no-pedaling-overlay').style.display = 'none';
 
         // Notification beep
         playBeep(440, 0.3);
@@ -869,12 +936,6 @@ const App = (() => {
         const adjustment = (newElapsed - elapsedSec) * 1000;
         startTimestamp -= adjustment;
         playBeep(440);
-    }
-
-    function stopTest() {
-        if (confirm('End the test now? Data collected so far will be saved.')) {
-            completeTest();
-        }
     }
 
     async function completeTest() {
@@ -921,7 +982,7 @@ const App = (() => {
 
             // Target display: show context-appropriate target
             if (state.phase.isMaxEffort) {
-                document.getElementById('metric-target-power').textContent = 'MAX';
+                document.getElementById('metric-target-power').textContent = state.phase.target;
             } else if (state.phase.id === Protocol.PHASE.RECOVERY && state.phaseElapsed >= state.phase.duration / 2) {
                 // Second half of recovery — ERG off, athlete spinning up
                 document.getElementById('metric-target-power').textContent = 'FREE';

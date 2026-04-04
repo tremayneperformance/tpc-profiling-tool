@@ -1276,6 +1276,18 @@ def create_app():
             t['has_fit_file'] = has_fit
         return jsonify({'status': 'ok', 'athlete': athlete, 'tests': tests})
 
+    @app.route('/ramp_test_full_result', methods=['GET'])
+    @coach_required
+    def legacy_ramp_full_result():
+        """Retrieve full analysis result for a specific saved test."""
+        result_id = request.args.get('result_id', '').strip()
+        if not result_id:
+            return jsonify({'status': 'error', 'message': 'result_id required.'}), 400
+        data = ramp_analysis.load_full_result(result_id)
+        if data is None:
+            return jsonify({'status': 'error', 'message': 'Full result not found.'}), 404
+        return jsonify({'status': 'ok', 'result': data})
+
     @app.route('/ftp_test_history', methods=['GET'])
     @coach_required
     def legacy_ftp_history():

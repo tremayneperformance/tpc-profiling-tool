@@ -18,7 +18,6 @@ Evidence base:
 
 import io
 import gzip
-import math
 import json
 from datetime import datetime
 from pathlib import Path

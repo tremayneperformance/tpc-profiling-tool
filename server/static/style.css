@@ -42,7 +42,7 @@ body {
 .container {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 1.2rem 20px 40px;
+  padding: 20px 20px 40px;
 }
 
 /* Global table containment */
@@ -339,28 +339,6 @@ input, select, textarea, button {
 }
 
 /* ============================================================
-   Admin — Auth Card (btn-primary)
-   ============================================================ */
-.btn-primary {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  padding: 0.65rem 1.25rem;
-  border-radius: var(--radius-sm);
-  font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-.btn-primary:hover { opacity: 0.85; }
-
-.card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-/* ============================================================
    Header — Sticky bar matching ramp tool
    ============================================================ */
 header {
@@ -375,7 +353,7 @@ header {
   position: sticky;
   top: 48px;  /* below top-nav */
   z-index: 100;
-  margin: 0 -20px 1.5rem;
+  margin: 0 -20px 20px;
   text-align: left;
 }
 header h1 {
@@ -409,8 +387,8 @@ header h1 {
 .upload-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.2rem;
-  margin-bottom: 1.8rem;
+  gap: 20px;
+  margin-bottom: 20px;
   align-items: stretch;
 }
 @media (max-width: 640px) {
@@ -536,7 +514,7 @@ header h1 {
   background: var(--bg-card);
   border-radius: var(--radius);
   padding: 24px;
-  margin-bottom: 1.4rem;
+  margin-bottom: 20px;
   border: 1px solid var(--border);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -608,7 +586,6 @@ header h1 {
   background: rgba(26, 28, 36, 0.9);
   border-radius: 10px;
   padding: 0.9rem 1.1rem;
-  border-left: 4px solid #1e2028;
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-left: 4px solid #1e2028;
   backdrop-filter: blur(8px);
@@ -1172,7 +1149,7 @@ footer strong   { color: #555; }
   background: var(--bg-card);
   border-radius: var(--radius);
   padding: 24px;
-  margin-bottom: 1.4rem;
+  margin-bottom: 20px;
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
   backdrop-filter: blur(12px);
@@ -2393,7 +2370,7 @@ header { position: relative; }
 /* Unified analyze button row (centered below upload grid) */
 .ramp-analyze-row {
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 20px;
 }
 .ramp-analyze-row .btn-primary {
   padding: 0.6rem 2rem;
@@ -2411,7 +2388,7 @@ header { position: relative; }
 
 /* Responsive */
 @media (max-width: 900px) {
-  .container { max-width: 100%; padding: 0 0.5rem; }
+  .container { max-width: 100%; padding: 20px 0.5rem 40px; }
   .upload-grid { grid-template-columns: 1fr; }
   .threshold-cards { grid-template-columns: 1fr 1fr; }
   .ramp-threshold-cards { grid-template-columns: 1fr 1fr; }

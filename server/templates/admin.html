@@ -44,7 +44,7 @@
   </div>
 </nav>
 
-<div class="container" style="padding-top: 1rem;">
+<div class="container">
 
   <!-- AUTH GATE (hidden by default -- shown only if token check fails) -->
   <div id="auth-gate" style="max-width:400px;margin:4rem auto;display:none;">
@@ -537,7 +537,7 @@
     const body = document.getElementById('modal-body');
     const title = document.getElementById('modal-title');
     body.innerHTML = '<p style="color:var(--text-secondary);">Loading...</p>';
-    modal.style.display = 'flex';
+    modal.classList.add('visible');
 
     try {
       const data = await api('/api/admin/session/' + sid + '/detail');
@@ -605,10 +605,10 @@
   }
 
   document.getElementById('modal-close').addEventListener('click', () => {
-    document.getElementById('session-modal').style.display = 'none';
+    document.getElementById('session-modal').classList.remove('visible');
   });
   document.getElementById('session-modal').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('visible');
   });
 
   // ------- TABS -------

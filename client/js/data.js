@@ -122,21 +122,6 @@ const Data = (() => {
         return { clean, artifactPct };
     }
 
-    // --- Simple artifact check (used only for the HRV display quick-filter) ---
-    function _isSimpleArtifact(rr, localMedian) {
-        if (rr < RR_MIN || rr > RR_MAX) return true;
-        if (localMedian > 0 && Math.abs(rr - localMedian) / localMedian > 0.20) return true;
-        return false;
-    }
-
-    function _getLocalMedianObj(arr, idx, windowSize = 5) {
-        const start = Math.max(0, idx - windowSize);
-        const end = Math.min(arr.length, idx + windowSize + 1);
-        const win = arr.slice(start, end).map(r => r.rr).sort((a, b) => a - b);
-        const mid = Math.floor(win.length / 2);
-        return win.length % 2 ? win[mid] : (win[mid - 1] + win[mid]) / 2;
-    }
-
     // =================================================================
     // HRV METRICS (rolling window)
     // =================================================================

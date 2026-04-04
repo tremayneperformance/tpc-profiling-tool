@@ -12,7 +12,6 @@ Routes:
 
 import io
 import os
-import sys
 import gzip
 import json
 import hashlib
@@ -20,9 +19,8 @@ from datetime import datetime
 from collections import OrderedDict
 
 import numpy as np
-from scipy import stats
 from flask import (
-    Flask, render_template, request, jsonify, redirect,
+    Flask, render_template, request, jsonify,
     make_response, send_from_directory, g
 )
 
@@ -41,7 +39,7 @@ import ramp_analysis
 import report_generator
 from dfa_core import (
     parse_fit_file, clean_rr_intervals, smoothness_priors_detrend,
-    dfa_alpha1, _interp_value, build_windows
+    dfa_alpha1, build_windows
 )
 
 

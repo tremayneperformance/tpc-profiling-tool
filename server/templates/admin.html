@@ -7,21 +7,26 @@
   <link rel="stylesheet" href="/static/style.css" />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
-    .btn-sm {
-      padding: 0.25rem 0.6rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-right: 0.25rem;
-    }
-    .btn-edit { background: rgba(59,130,246,0.2); color: #3b82f6; }
-    .btn-edit:hover { background: rgba(59,130,246,0.35); }
-    .btn-reset { background: rgba(234,179,8,0.2); color: #eab308; }
-    .btn-reset:hover { background: rgba(234,179,8,0.35); }
-    .btn-delete { background: rgba(239,68,68,0.2); color: #ef4444; }
-    .btn-delete:hover { background: rgba(239,68,68,0.35); }
+    .add-athlete-form { background: var(--card-bg, #1e1e2e); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; }
+    .add-athlete-form h3 { font-family: 'Montserrat', sans-serif; margin: 0 0 1rem; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; }
+    .form-grid label { display: flex; flex-direction: column; font-size: 0.8rem; color: var(--text-secondary, #999); }
+    .form-grid input, .form-grid select { margin-top: 0.25rem; padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border, #333); background: var(--bg, #121220); color: var(--text, #eee); font-size: 0.9rem; }
+    .form-actions { margin-top: 1rem; display: flex; gap: 0.5rem; }
+    .btn { padding: 0.5rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+    .btn-primary { background: var(--accent, #6366f1); color: #fff; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { opacity: 0.9; }
+    .btn-secondary { background: #374151; color: #fff; }
+    .btn-secondary:hover { opacity: 0.9; }
+    .btn-sm { padding: 0.3rem 0.7rem; font-size: 0.78rem; }
+    .actions-cell { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+    .form-error { color: #ef4444; font-size: 0.85rem; margin-top: 0.5rem; display: none; }
+    .form-success { color: #22c55e; font-size: 0.85rem; margin-top: 0.5rem; display: none; }
+    .edit-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .edit-modal { background: var(--card-bg, #1e1e2e); border-radius: 12px; padding: 2rem; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; }
+    .edit-modal h3 { font-family: 'Montserrat', sans-serif; margin: 0 0 1rem; }
   </style>
 </head>
 <body>
@@ -41,7 +46,7 @@
 
 <div class="container" style="padding-top: 1rem;">
 
-  <!-- AUTH GATE (hidden by default — shown only if token check fails) -->
+  <!-- AUTH GATE (hidden by default -- shown only if token check fails) -->
   <div id="auth-gate" style="max-width:400px;margin:4rem auto;display:none;">
     <div class="card" style="padding:2rem;">
       <h2 style="font-family:'Montserrat',sans-serif;margin-bottom:1rem;">Coach Login</h2>
@@ -58,6 +63,32 @@
       <h1>Tremayne Performance</h1>
       <p class="header-subtitle">Data Browser</p>
     </header>
+
+    <!-- ADD ATHLETE FORM -->
+    <div class="add-athlete-form">
+      <h3>Add Athlete</h3>
+      <div class="form-grid">
+        <label>Name <input type="text" id="add-name" placeholder="Full name" /></label>
+        <label>Email <input type="email" id="add-email" placeholder="email@example.com" /></label>
+        <label>Sport
+          <select id="add-sport">
+            <option value="bike">Bike</option>
+            <option value="run">Run</option>
+            <option value="both">Both</option>
+          </select>
+        </label>
+        <label>Threshold Power (W) <input type="number" id="add-threshold-power" placeholder="e.g. 250" /></label>
+        <label>Threshold Pace (min/km) <input type="text" id="add-threshold-pace" placeholder="e.g. 4:30" /></label>
+        <label>HRmax Bike <input type="number" id="add-hrmax-bike" placeholder="e.g. 185" /></label>
+        <label>HRmax Run <input type="number" id="add-hrmax-run" placeholder="e.g. 190" /></label>
+        <label>Weight (kg) <input type="number" id="add-weight" step="0.1" placeholder="e.g. 72.5" /></label>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="add-athlete-btn">Add Athlete</button>
+      </div>
+      <div class="form-error" id="add-error"></div>
+      <div class="form-success" id="add-success"></div>
+    </div>
 
     <!-- STATS CARDS -->
     <div id="stats-grid" class="stats-grid" style="margin-bottom:2rem;">
@@ -90,132 +121,25 @@
     <!-- TABS -->
     <div class="admin-tabs">
       <button class="admin-tab active" data-tab="athletes">Athletes</button>
-      <button class="admin-tab" data-tab="users">Users</button>
+      <button class="admin-tab" data-tab="users">All Users</button>
       <button class="admin-tab" data-tab="sessions">Test Sessions</button>
     </div>
 
-    <!-- ATHLETES TAB -->
+    <!-- ATHLETES TABLE -->
     <section id="tab-athletes" class="admin-tab-content">
-
-      <!-- Add Athlete Form -->
-      <div class="card" style="padding:1.5rem;margin-bottom:1.5rem;">
-        <h3 style="font-family:'Montserrat',sans-serif;margin-bottom:1rem;">Add Athlete</h3>
-        <div id="add-athlete-msg" style="display:none;padding:0.5rem 0.75rem;border-radius:6px;margin-bottom:1rem;font-size:0.85rem;"></div>
-        <form id="add-athlete-form" autocomplete="off">
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.75rem;">
-            <div>
-              <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">Name *</label>
-              <input type="text" id="aa-name" required style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-            </div>
-            <div>
-              <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">Email *</label>
-              <input type="email" id="aa-email" required style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-            </div>
-            <div>
-              <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">Sport</label>
-              <select id="aa-sport" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-                <option value="bike">Bike</option>
-                <option value="run">Run</option>
-                <option value="both">Both</option>
-              </select>
-            </div>
-            <div>
-              <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">Threshold Power (W)</label>
-              <input type="number" id="aa-tp" min="0" step="1" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-            </div>
-            <div>
-              <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">Threshold Pace (min/km)</label>
-              <input type="text" id="aa-pace" placeholder="e.g. 5:30" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-            </div>
-            <div>
-              <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">HR Max Bike</label>
-              <input type="number" id="aa-hrb" min="0" max="250" step="1" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-            </div>
-            <div>
-              <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">HR Max Run</label>
-              <input type="number" id="aa-hrr" min="0" max="250" step="1" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-            </div>
-            <div>
-              <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">Weight (kg)</label>
-              <input type="number" id="aa-weight" min="0" step="0.1" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-            </div>
-          </div>
-          <button type="submit" style="margin-top:1rem;padding:0.5rem 1.5rem;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:0.9rem;font-weight:600;cursor:pointer;">Add Athlete</button>
-        </form>
-      </div>
-
-      <!-- Athletes Table -->
       <table class="admin-table" id="athletes-table">
         <thead>
           <tr>
             <th>Name</th>
             <th>Email</th>
             <th>Sport</th>
-            <th style="width:200px">Actions</th>
+            <th style="width:220px">Actions</th>
           </tr>
         </thead>
         <tbody id="athletes-tbody"></tbody>
       </table>
       <p id="athletes-empty" class="empty-msg" style="display:none;">No athletes found.</p>
     </section>
-
-    <!-- EDIT ATHLETE MODAL -->
-    <div id="edit-athlete-modal" class="modal-overlay" style="display:none;">
-      <div class="modal-content" style="max-width:550px;">
-        <div class="modal-header">
-          <h3>Edit Athlete</h3>
-          <button class="modal-close-btn" onclick="document.getElementById('edit-athlete-modal').style.display='none'">&times;</button>
-        </div>
-        <div class="modal-body" style="padding:1.5rem;">
-          <div id="edit-athlete-msg" style="display:none;padding:0.5rem 0.75rem;border-radius:6px;margin-bottom:1rem;font-size:0.85rem;"></div>
-          <form id="edit-athlete-form" autocomplete="off">
-            <input type="hidden" id="ea-id">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
-              <div>
-                <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">Name *</label>
-                <input type="text" id="ea-name" required style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-              </div>
-              <div>
-                <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">Email *</label>
-                <input type="email" id="ea-email" required style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-              </div>
-              <div>
-                <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">Sport</label>
-                <select id="ea-sport" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-                  <option value="bike">Bike</option>
-                  <option value="run">Run</option>
-                  <option value="both">Both</option>
-                </select>
-              </div>
-              <div>
-                <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">Threshold Power (W)</label>
-                <input type="number" id="ea-tp" min="0" step="1" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-              </div>
-              <div>
-                <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">Threshold Pace (min/km)</label>
-                <input type="text" id="ea-pace" placeholder="e.g. 5:30" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-              </div>
-              <div>
-                <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">HR Max Bike</label>
-                <input type="number" id="ea-hrb" min="0" max="250" step="1" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-              </div>
-              <div>
-                <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">HR Max Run</label>
-                <input type="number" id="ea-hrr" min="0" max="250" step="1" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-              </div>
-              <div>
-                <label style="display:block;font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.25rem;">Weight (kg)</label>
-                <input type="number" id="ea-weight" min="0" step="0.1" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary);font-size:0.9rem;">
-              </div>
-            </div>
-            <div style="margin-top:1rem;display:flex;gap:0.75rem;">
-              <button type="submit" style="padding:0.5rem 1.5rem;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:0.9rem;font-weight:600;cursor:pointer;">Save Changes</button>
-              <button type="button" onclick="document.getElementById('edit-athlete-modal').style.display='none'" style="padding:0.5rem 1.5rem;background:var(--surface);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;font-size:0.9rem;cursor:pointer;">Cancel</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
 
     <!-- USERS TABLE -->
     <section id="tab-users" class="admin-tab-content" style="display:none;">
@@ -275,6 +199,36 @@
       </div>
     </div>
 
+    <!-- EDIT ATHLETE MODAL -->
+    <div id="edit-modal" class="edit-modal-overlay" style="display:none;">
+      <div class="edit-modal">
+        <h3>Edit Athlete</h3>
+        <input type="hidden" id="edit-id" />
+        <div class="form-grid">
+          <label>Name <input type="text" id="edit-name" /></label>
+          <label>Email <input type="email" id="edit-email" /></label>
+          <label>Sport
+            <select id="edit-sport">
+              <option value="">--</option>
+              <option value="bike">Bike</option>
+              <option value="run">Run</option>
+              <option value="both">Both</option>
+            </select>
+          </label>
+          <label>Threshold Power (W) <input type="number" id="edit-threshold-power" /></label>
+          <label>Threshold Pace <input type="text" id="edit-threshold-pace" /></label>
+          <label>HRmax Bike <input type="number" id="edit-hrmax-bike" /></label>
+          <label>HRmax Run <input type="number" id="edit-hrmax-run" /></label>
+          <label>Weight (kg) <input type="number" id="edit-weight" step="0.1" /></label>
+        </div>
+        <div class="form-error" id="edit-error"></div>
+        <div class="form-actions" style="margin-top:1rem;">
+          <button class="btn btn-primary" id="edit-save-btn">Save Changes</button>
+          <button class="btn btn-secondary" id="edit-cancel-btn">Cancel</button>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /admin-content -->
 </div><!-- /container -->
 
@@ -310,54 +264,13 @@
     }
   }
 
-  // Legacy dev-login handlers (elements may not exist)
-  const authLoginBtn = document.getElementById('auth-login-btn');
-  if (authLoginBtn) {
-    authLoginBtn.addEventListener('click', async () => {
-      const pw = document.getElementById('auth-password').value.trim();
-      const errEl = document.getElementById('auth-error');
-      errEl.style.display = 'none';
-      if (!pw) return;
-      try {
-        const resp = await fetch('/api/auth/dev-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: pw }),
-        });
-        const data = await resp.json();
-        if (data.status === 'ok') {
-          token = data.token;
-          localStorage.setItem('auth_token', token);
-          showContent();
-        } else {
-          errEl.textContent = data.message || 'Login failed.';
-          errEl.style.display = '';
-        }
-      } catch {
-        errEl.textContent = 'Network error.';
-        errEl.style.display = '';
-      }
-    });
-  }
-
-  const authPwField = document.getElementById('auth-password');
-  if (authPwField) {
-    authPwField.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && authLoginBtn) authLoginBtn.click();
-    });
-  }
-
-  // Logout handled by inline onclick on nav button
-
   // ------- API HELPERS -------
   function api(url, opts) {
-    const options = Object.assign({}, opts || {});
-    options.headers = Object.assign({ 'Authorization': 'Bearer ' + token }, options.headers || {});
-    if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
-      options.headers['Content-Type'] = 'application/json';
-      options.body = JSON.stringify(options.body);
+    const headers = { 'Authorization': 'Bearer ' + token };
+    if (opts && opts.body && typeof opts.body === 'string') {
+      headers['Content-Type'] = 'application/json';
     }
-    return fetch(url, options).then(r => r.json());
+    return fetch(url, { ...opts, headers: { ...headers, ...(opts && opts.headers || {}) } }).then(r => r.json());
   }
 
   function fmt(val, fallback) { return val != null ? val : (fallback || '-'); }
@@ -389,166 +302,6 @@
     loadSessions();
   }
 
-  // ------- ATHLETE MANAGEMENT -------
-  let athletesCache = [];
-
-  async function loadAthletes() {
-    try {
-      const data = await api('/api/admin/athletes');
-      if (data.status !== 'ok') return;
-      athletesCache = data.athletes || [];
-      const tbody = document.getElementById('athletes-tbody');
-      const empty = document.getElementById('athletes-empty');
-      if (!athletesCache.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
-      empty.style.display = 'none';
-      tbody.innerHTML = athletesCache.map(a => `<tr>
-        <td>${esc(a.name)}</td>
-        <td>${esc(a.email)}</td>
-        <td><span class="badge badge-${a.sport || 'bike'}">${a.sport || 'bike'}</span></td>
-        <td>
-          <button class="btn-sm btn-edit" onclick="window._editAthlete(${a.id})">Edit</button>
-          <button class="btn-sm btn-reset" onclick="window._resetPw(${a.id}, '${esc(a.name)}')">Reset PW</button>
-          <button class="btn-sm btn-delete" onclick="window._deleteAthlete(${a.id}, '${esc(a.name)}')">Delete</button>
-        </td>
-      </tr>`).join('');
-    } catch(e) { console.error('Athletes load failed', e); }
-  }
-
-  function showAthleteMsg(elId, msg, isError) {
-    const el = document.getElementById(elId);
-    el.textContent = msg;
-    el.style.display = '';
-    el.style.background = isError ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)';
-    el.style.color = isError ? '#ef4444' : '#22c55e';
-    setTimeout(() => { el.style.display = 'none'; }, 4000);
-  }
-
-  // Add Athlete form
-  document.getElementById('add-athlete-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const body = {
-      name: document.getElementById('aa-name').value.trim(),
-      email: document.getElementById('aa-email').value.trim(),
-      sport: document.getElementById('aa-sport').value,
-    };
-    const tp = document.getElementById('aa-tp').value;
-    const pace = document.getElementById('aa-pace').value.trim();
-    const hrb = document.getElementById('aa-hrb').value;
-    const hrr = document.getElementById('aa-hrr').value;
-    const wt = document.getElementById('aa-weight').value;
-    if (tp) body.threshold_power = parseInt(tp);
-    if (pace) body.threshold_pace = pace;
-    if (hrb) body.hrmax_bike = parseInt(hrb);
-    if (hrr) body.hrmax_run = parseInt(hrr);
-    if (wt) body.weight_kg = parseFloat(wt);
-
-    if (!body.name || !body.email) {
-      showAthleteMsg('add-athlete-msg', 'Name and email are required.', true);
-      return;
-    }
-
-    try {
-      const data = await api('/api/admin/athletes', { method: 'POST', body: body });
-      if (data.status === 'ok') {
-        showAthleteMsg('add-athlete-msg', 'Athlete added successfully.', false);
-        document.getElementById('add-athlete-form').reset();
-        loadAthletes();
-        loadStats();
-      } else {
-        showAthleteMsg('add-athlete-msg', data.message || 'Failed to add athlete.', true);
-      }
-    } catch(err) {
-      showAthleteMsg('add-athlete-msg', 'Network error: ' + err.message, true);
-    }
-  });
-
-  // Edit athlete
-  window._editAthlete = function(id) {
-    const a = athletesCache.find(x => x.id === id);
-    if (!a) return;
-    document.getElementById('ea-id').value = a.id;
-    document.getElementById('ea-name').value = a.name || '';
-    document.getElementById('ea-email').value = a.email || '';
-    document.getElementById('ea-sport').value = a.sport || 'bike';
-    document.getElementById('ea-tp').value = a.threshold_power || '';
-    document.getElementById('ea-pace').value = a.threshold_pace || '';
-    document.getElementById('ea-hrb').value = a.hrmax_bike || '';
-    document.getElementById('ea-hrr').value = a.hrmax_run || '';
-    document.getElementById('ea-weight').value = a.weight_kg || '';
-    document.getElementById('edit-athlete-msg').style.display = 'none';
-    document.getElementById('edit-athlete-modal').style.display = 'flex';
-  };
-
-  document.getElementById('edit-athlete-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const id = document.getElementById('ea-id').value;
-    const body = {
-      name: document.getElementById('ea-name').value.trim(),
-      email: document.getElementById('ea-email').value.trim(),
-      sport: document.getElementById('ea-sport').value,
-    };
-    const tp = document.getElementById('ea-tp').value;
-    const pace = document.getElementById('ea-pace').value.trim();
-    const hrb = document.getElementById('ea-hrb').value;
-    const hrr = document.getElementById('ea-hrr').value;
-    const wt = document.getElementById('ea-weight').value;
-    body.threshold_power = tp ? parseInt(tp) : null;
-    body.threshold_pace = pace || null;
-    body.hrmax_bike = hrb ? parseInt(hrb) : null;
-    body.hrmax_run = hrr ? parseInt(hrr) : null;
-    body.weight_kg = wt ? parseFloat(wt) : null;
-
-    if (!body.name || !body.email) {
-      showAthleteMsg('edit-athlete-msg', 'Name and email are required.', true);
-      return;
-    }
-
-    try {
-      const data = await api('/api/admin/athletes/' + id, { method: 'PUT', body: body });
-      if (data.status === 'ok') {
-        showAthleteMsg('edit-athlete-msg', 'Athlete updated.', false);
-        loadAthletes();
-        loadUsers();
-        setTimeout(() => { document.getElementById('edit-athlete-modal').style.display = 'none'; }, 1000);
-      } else {
-        showAthleteMsg('edit-athlete-msg', data.message || 'Update failed.', true);
-      }
-    } catch(err) {
-      showAthleteMsg('edit-athlete-msg', 'Network error: ' + err.message, true);
-    }
-  });
-
-  // Reset password
-  window._resetPw = async function(id, name) {
-    if (!confirm('Reset password for ' + name + ' to the default?')) return;
-    try {
-      const data = await api('/api/admin/athletes/' + id, { method: 'PUT', body: { password_reset: true } });
-      if (data.status === 'ok') {
-        alert('Password reset successfully for ' + name + '.');
-      } else {
-        alert('Failed: ' + (data.message || 'Unknown error'));
-      }
-    } catch(err) {
-      alert('Network error: ' + err.message);
-    }
-  };
-
-  // Delete athlete
-  window._deleteAthlete = async function(id, name) {
-    if (!confirm('Delete athlete ' + name + '? This cannot be undone.')) return;
-    try {
-      const data = await api('/api/admin/athletes/' + id, { method: 'DELETE' });
-      if (data.status === 'ok') {
-        loadAthletes();
-        loadStats();
-      } else {
-        alert('Failed: ' + (data.message || 'Unknown error'));
-      }
-    } catch(err) {
-      alert('Network error: ' + err.message);
-    }
-  };
-
   async function loadStats() {
     try {
       const data = await api('/api/admin/stats');
@@ -563,6 +316,167 @@
     } catch(e) { console.error('Stats load failed', e); }
   }
 
+  // ------- ATHLETES TABLE -------
+  let athletesList = [];
+
+  async function loadAthletes() {
+    try {
+      const data = await api('/api/admin/athletes');
+      if (data.status !== 'ok') return;
+      athletesList = data.athletes || [];
+      const tbody = document.getElementById('athletes-tbody');
+      const empty = document.getElementById('athletes-empty');
+      if (!athletesList.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+      empty.style.display = 'none';
+      tbody.innerHTML = athletesList.map(a => `<tr>
+        <td>${esc(a.name)}</td>
+        <td>${esc(a.email)}</td>
+        <td>${esc(a.sport || '-')}</td>
+        <td class="actions-cell">
+          <button class="btn btn-secondary btn-sm" onclick="openEditModal(${a.id})">Edit</button>
+          <button class="btn btn-secondary btn-sm" onclick="resetPassword(${a.id}, '${esc(a.name)}')">Reset PW</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteAthlete(${a.id}, '${esc(a.name)}')">Delete</button>
+        </td>
+      </tr>`).join('');
+    } catch(e) { console.error('Athletes load failed', e); }
+  }
+
+  // ------- ADD ATHLETE -------
+  document.getElementById('add-athlete-btn').addEventListener('click', async () => {
+    const errEl = document.getElementById('add-error');
+    const sucEl = document.getElementById('add-success');
+    errEl.style.display = 'none';
+    sucEl.style.display = 'none';
+
+    const name = document.getElementById('add-name').value.trim();
+    const email = document.getElementById('add-email').value.trim();
+    if (!name || !email) { errEl.textContent = 'Name and email are required.'; errEl.style.display = ''; return; }
+
+    const body = { name, email, sport: document.getElementById('add-sport').value };
+    const tp = document.getElementById('add-threshold-power').value;
+    if (tp) body.threshold_power = parseInt(tp);
+    const tpace = document.getElementById('add-threshold-pace').value.trim();
+    if (tpace) body.threshold_pace = tpace;
+    const hb = document.getElementById('add-hrmax-bike').value;
+    if (hb) body.hrmax_bike = parseInt(hb);
+    const hr = document.getElementById('add-hrmax-run').value;
+    if (hr) body.hrmax_run = parseInt(hr);
+    const wt = document.getElementById('add-weight').value;
+    if (wt) body.weight_kg = parseFloat(wt);
+
+    try {
+      const data = await api('/api/admin/athletes', { method: 'POST', body: JSON.stringify(body) });
+      if (data.status === 'ok') {
+        sucEl.textContent = 'Athlete added successfully!';
+        sucEl.style.display = '';
+        ['add-name','add-email','add-threshold-power','add-threshold-pace','add-hrmax-bike','add-hrmax-run','add-weight'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('add-sport').value = 'bike';
+        loadAthletes();
+        loadStats();
+        setTimeout(() => sucEl.style.display = 'none', 3000);
+      } else {
+        errEl.textContent = data.message || 'Failed to add athlete.';
+        errEl.style.display = '';
+      }
+    } catch(e) {
+      errEl.textContent = 'Network error.';
+      errEl.style.display = '';
+    }
+  });
+
+  // ------- EDIT ATHLETE -------
+  window.openEditModal = function(id) {
+    const a = athletesList.find(x => x.id === id);
+    if (!a) return;
+    document.getElementById('edit-id').value = a.id;
+    document.getElementById('edit-name').value = a.name || '';
+    document.getElementById('edit-email').value = a.email || '';
+    document.getElementById('edit-sport').value = a.sport || '';
+    document.getElementById('edit-threshold-power').value = a.threshold_power || '';
+    document.getElementById('edit-threshold-pace').value = a.threshold_pace || '';
+    document.getElementById('edit-hrmax-bike').value = a.hrmax_bike || '';
+    document.getElementById('edit-hrmax-run').value = a.hrmax_run || '';
+    document.getElementById('edit-weight').value = a.weight_kg || '';
+    document.getElementById('edit-error').style.display = 'none';
+    document.getElementById('edit-modal').style.display = 'flex';
+  };
+
+  document.getElementById('edit-cancel-btn').addEventListener('click', () => {
+    document.getElementById('edit-modal').style.display = 'none';
+  });
+  document.getElementById('edit-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
+  });
+
+  document.getElementById('edit-save-btn').addEventListener('click', async () => {
+    const id = document.getElementById('edit-id').value;
+    const errEl = document.getElementById('edit-error');
+    errEl.style.display = 'none';
+
+    const body = {
+      name: document.getElementById('edit-name').value.trim(),
+      email: document.getElementById('edit-email').value.trim(),
+      sport: document.getElementById('edit-sport').value || null,
+    };
+    const tp = document.getElementById('edit-threshold-power').value;
+    body.threshold_power = tp ? parseInt(tp) : null;
+    const tpace = document.getElementById('edit-threshold-pace').value.trim();
+    body.threshold_pace = tpace || null;
+    const hb = document.getElementById('edit-hrmax-bike').value;
+    body.hrmax_bike = hb ? parseInt(hb) : null;
+    const hr = document.getElementById('edit-hrmax-run').value;
+    body.hrmax_run = hr ? parseInt(hr) : null;
+    const wt = document.getElementById('edit-weight').value;
+    body.weight_kg = wt ? parseFloat(wt) : null;
+
+    if (!body.name || !body.email) { errEl.textContent = 'Name and email required.'; errEl.style.display = ''; return; }
+
+    try {
+      const data = await api('/api/admin/athletes/' + id, { method: 'PUT', body: JSON.stringify(body) });
+      if (data.status === 'ok') {
+        document.getElementById('edit-modal').style.display = 'none';
+        loadAthletes();
+      } else {
+        errEl.textContent = data.message || 'Update failed.';
+        errEl.style.display = '';
+      }
+    } catch(e) {
+      errEl.textContent = 'Network error.';
+      errEl.style.display = '';
+    }
+  });
+
+  // ------- RESET PASSWORD -------
+  window.resetPassword = async function(id, name) {
+    if (!confirm('Reset password for ' + name + ' to "tpc"?')) return;
+    try {
+      const data = await api('/api/admin/athletes/' + id, {
+        method: 'PUT',
+        body: JSON.stringify({ password_reset: true }),
+      });
+      if (data.status === 'ok') {
+        alert('Password for ' + name + ' has been reset to "tpc". They will be prompted to change it on next login.');
+      } else {
+        alert(data.message || 'Reset failed.');
+      }
+    } catch(e) { alert('Network error.'); }
+  };
+
+  // ------- DELETE ATHLETE -------
+  window.deleteAthlete = async function(id, name) {
+    if (!confirm('Delete athlete "' + name + '"? This will also delete all their test data. This cannot be undone.')) return;
+    try {
+      const data = await api('/api/admin/athletes/' + id, { method: 'DELETE' });
+      if (data.status === 'ok') {
+        loadAthletes();
+        loadStats();
+      } else {
+        alert(data.message || 'Delete failed.');
+      }
+    } catch(e) { alert('Network error.'); }
+  };
+
+  // ------- USERS TABLE -------
   async function loadUsers() {
     try {
       const data = await api('/api/admin/all-users');
@@ -586,6 +500,7 @@
     } catch(e) { console.error('Users load failed', e); }
   }
 
+  // ------- SESSIONS TABLE -------
   async function loadSessions() {
     try {
       const data = await api('/api/admin/all-sessions');
@@ -610,7 +525,6 @@
         <td>${s.archetype ? '<span class="badge badge-yes">Yes</span>' : '<span class="badge badge-no">No</span>'}</td>
       </tr>`).join('');
 
-      // Click to open detail
       tbody.querySelectorAll('.clickable-row').forEach(row => {
         row.addEventListener('click', () => openSessionDetail(row.dataset.sid));
       });
@@ -629,7 +543,7 @@
       const data = await api('/api/admin/session/' + sid + '/detail');
       if (data.status !== 'ok') { body.innerHTML = '<p style="color:#ef4444;">Error loading session.</p>'; return; }
       const s = data.session;
-      title.textContent = 'Session #' + s.id + ' — ' + (s.athlete_name || 'Unknown');
+      title.textContent = 'Session #' + s.id + ' \u2014 ' + (s.athlete_name || 'Unknown');
 
       let html = '<div class="detail-grid">';
       html += detailItem('Athlete', s.athlete_name + ' (' + s.athlete_email + ')');
@@ -648,7 +562,6 @@
       html += detailItem('Weight', s.weight_kg ? s.weight_kg + ' kg' : '-');
       html += '</div>';
 
-      // Analysis results
       if (s.archetype) {
         html += '<h4 style="margin:1.5rem 0 0.75rem;color:var(--accent);">Analysis Results</h4>';
         html += '<div class="detail-grid">';
@@ -659,13 +572,11 @@
         html += '</div>';
       }
 
-      // Early ramp end
       if (s.early_ramp_end) {
         html += '<h4 style="margin:1.5rem 0 0.75rem;color:var(--accent);">Early Ramp Termination</h4>';
         html += '<pre class="detail-pre">' + esc(typeof s.early_ramp_end === 'string' ? s.early_ramp_end : JSON.stringify(s.early_ramp_end, null, 2)) + '</pre>';
       }
 
-      // Sample records
       if (s.sample_records && s.sample_records.length) {
         html += '<h4 style="margin:1.5rem 0 0.75rem;color:var(--accent);">Sample Data (first 50 records)</h4>';
         html += '<div style="overflow-x:auto;"><table class="admin-table compact">';
@@ -697,9 +608,6 @@
     document.getElementById('session-modal').style.display = 'none';
   });
   document.getElementById('session-modal').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
-  });
-  document.getElementById('edit-athlete-modal').addEventListener('click', (e) => {
     if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
   });
 

@@ -310,35 +310,42 @@
     }
   }
 
-  document.getElementById('auth-login-btn').addEventListener('click', async () => {
-    const pw = document.getElementById('auth-password').value.trim();
-    const errEl = document.getElementById('auth-error');
-    errEl.style.display = 'none';
-    if (!pw) return;
-    try {
-      const resp = await fetch('/api/auth/dev-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pw }),
-      });
-      const data = await resp.json();
-      if (data.status === 'ok') {
-        token = data.token;
-        localStorage.setItem('auth_token', token);
-        showContent();
-      } else {
-        errEl.textContent = data.message || 'Login failed.';
+  // Legacy dev-login handlers (elements may not exist)
+  const authLoginBtn = document.getElementById('auth-login-btn');
+  if (authLoginBtn) {
+    authLoginBtn.addEventListener('click', async () => {
+      const pw = document.getElementById('auth-password').value.trim();
+      const errEl = document.getElementById('auth-error');
+      errEl.style.display = 'none';
+      if (!pw) return;
+      try {
+        const resp = await fetch('/api/auth/dev-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pw }),
+        });
+        const data = await resp.json();
+        if (data.status === 'ok') {
+          token = data.token;
+          localStorage.setItem('auth_token', token);
+          showContent();
+        } else {
+          errEl.textContent = data.message || 'Login failed.';
+          errEl.style.display = '';
+        }
+      } catch {
+        errEl.textContent = 'Network error.';
         errEl.style.display = '';
       }
-    } catch {
-      errEl.textContent = 'Network error.';
-      errEl.style.display = '';
-    }
-  });
+    });
+  }
 
-  document.getElementById('auth-password').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') document.getElementById('auth-login-btn').click();
-  });
+  const authPwField = document.getElementById('auth-password');
+  if (authPwField) {
+    authPwField.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && authLoginBtn) authLoginBtn.click();
+    });
+  }
 
   // Logout handled by inline onclick on nav button
 

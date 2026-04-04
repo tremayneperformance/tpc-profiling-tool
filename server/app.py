@@ -480,6 +480,7 @@ def create_app():
             d = s.to_dict()
             d['athlete_name'] = s.athlete.name
             d['athlete_email'] = s.athlete.email
+            d['rr_count'] = RRInterval.query.filter_by(session_id=s.id).count()
             results.append(d)
 
         return jsonify({'status': 'ok', 'sessions': results})
@@ -529,7 +530,7 @@ def create_app():
     @app.route('/api/analysis/analyze-session/<int:session_id>', methods=['POST'])
     @coach_required
     def analyze_session(session_id):
-        """Run DFA ramp analysis on a stored test session."""
+        """Run full DFA ramp analysis on a stored test session."""
         session_obj = TestSession.query.get(session_id)
         if not session_obj:
             return jsonify({'status': 'error', 'message': 'Session not found.'}), 404
@@ -545,37 +546,73 @@ def create_app():
         if not rr_intervals:
             return jsonify({'status': 'error', 'message': 'No RR interval data for this session.'}), 400
 
-        # Build the data structures for the analysis engine
+        # Build data structures matching what parse_fit_file returns
         rr_ms = [rr.rr_ms for rr in rr_intervals]
-        rr_times = []
+        rr_times_raw = []
         elapsed = 0.0
         for rr in rr_intervals:
-            rr_times.append(elapsed)
+            rr_times_raw.append(elapsed)
             elapsed += rr.rr_ms / 1000.0
 
         heart_rates = [(r.elapsed_sec, float(r.heart_rate)) for r in records if r.heart_rate]
         powers = [(r.elapsed_sec, float(r.power)) for r in records if r.power]
 
-        # Clean RR intervals
-        rr_clean, rr_times_clean, artifact_pct = clean_rr_intervals(rr_ms, rr_times)
+        # Clean RR intervals and build windows
+        rr_clean, times_clean, artifact_pct = clean_rr_intervals(rr_ms, rr_times_raw)
 
-        # Build DFA windows
-        windows = build_windows(rr_clean, rr_times_clean, heart_rates, powers)
+        rr_orig = np.array(rr_ms)
+        rr_fixed = np.array(rr_clean)
+        artifact_mask = (np.abs(rr_orig - rr_fixed) > 0.01).tolist()
 
-        # Run ramp analysis if we have a FIT file equivalent
-        # For now, return the DFA windows data for the analysis dashboard
-        result = {
-            'session_id': session_id,
-            'athlete_name': session_obj.athlete.name,
-            'sport': session_obj.sport,
+        windows = build_windows(rr_clean, times_clean, heart_rates, powers,
+                                artifact_mask=artifact_mask)
+
+        # Construct dfa_result dict compatible with analyze_ramp_test
+        dfa_result = {
+            'status': 'ok',
+            'parsed': {
+                'powers': powers,
+                'heart_rates': heart_rates,
+                'speeds': [],
+                'rr_ms': rr_ms,
+                'rr_times': rr_times_raw,
+                'warnings': [],
+                'source': 'database',
+            },
+            'rr_clean': rr_clean,
+            'rr_times': times_clean,
+            'artifact_pct': round(artifact_pct, 2),
+            'artifact_mask': artifact_mask,
             'windows': windows,
-            'artifact_pct': artifact_pct,
-            'rr_count': len(rr_ms),
-            'record_count': len(records),
-            'duration_sec': session_obj.duration_sec,
         }
 
-        return jsonify({'status': 'ok', 'result': result})
+        # Get optional parameters from request
+        body = request.get_json(silent=True) or {}
+        sport = body.get('sport', session_obj.sport or 'bike')
+        threshold_pace_sec = body.get('threshold_pace_sec')
+
+        # Run the full analysis pipeline
+        result = ramp_analysis.analyze_ramp_test(
+            dfa_result=dfa_result,
+            protocol_type=sport,
+            threshold_pace_sec=threshold_pace_sec,
+        )
+
+        if result.get('status') == 'ok':
+            # Store analysis results on the session
+            session_obj.artifact_pct = result.get('artifact_pct')
+            thresholds = result.get('thresholds', {})
+            session_obj.hrvt1s_power = thresholds.get('hrvt1s_power')
+            session_obj.hrvt1s_hr = thresholds.get('hrvt1s_hr')
+            session_obj.hrvt1c_power = thresholds.get('hrvt1c_power')
+            session_obj.hrvt1c_hr = thresholds.get('hrvt1c_hr')
+            session_obj.hrvt2_power = thresholds.get('hrvt2_power')
+            session_obj.hrvt2_hr = thresholds.get('hrvt2_hr')
+            session_obj.archetype = result.get('archetype', {}).get('label')
+            session_obj.analysis_json = json.dumps(result)
+            db.session.commit()
+
+        return jsonify({'status': result.get('status', 'error'), 'result': result})
 
     # -----------------------------------------------------------------------
     # EXISTING ANALYSIS ROUTES (FIT file upload — preserved for coach)

@@ -74,6 +74,8 @@ The DFA ramp identifies HRVT1/HRVT2 thresholds. The MAP ramp estimates maximal a
 - **MAP auto-termination**: During MAP ramp, if power drops below 30% of target for 8 seconds, skips to cooldown
 
 ## Git Practices
-- Push to `main` for production deployments
+- **Commit and push to `main` immediately** — do not batch changes on feature branches for later merging
+- **One change at a time** — each commit should be a single logical change so it's easy to identify what broke if something goes wrong
 - Railway auto-deploys on push to main
 - Always bump `client/sw.js` `CACHE_NAME` when changing client files
+- **Never modify `client/js/ble.js`** unless explicitly asked — BLE connection code is fragile and proven working

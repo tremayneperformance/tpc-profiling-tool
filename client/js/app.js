@@ -300,6 +300,7 @@ const App = (() => {
             document.getElementById('no-pedaling-overlay').style.display = 'none';
             noPedalingSeconds = 0;
         });
+        document.getElementById('btn-start-cooldown').addEventListener('click', startCooldown);
         document.getElementById('btn-start').addEventListener('click', openPreflight);
         document.getElementById('btn-preflight-confirm').addEventListener('click', confirmAndStart);
         document.getElementById('btn-preflight-cancel').addEventListener('click', closePreflight);
@@ -715,25 +716,11 @@ const App = (() => {
             stageNum: state.phase.stageNum || null,
         });
 
-        // --- Effort overlay timer update ---
-        if (state.phase.id === Protocol.PHASE.MAX_EFFORT || state.phase.id === Protocol.PHASE.TTE) {
-            // Calculate elapsed time across all MAP steps (not just current step)
-            let effortElapsed = state.phaseElapsed;
-            if (state.phase.isMaxEffort) {
-                for (let i = 0; i < state.index; i++) {
-                    if (phases[i].isMaxEffort) effortElapsed += phases[i].duration;
-                }
-            }
+        // --- Effort overlay timer update (run TTE only) ---
+        if (state.phase.id === Protocol.PHASE.TTE) {
             document.getElementById('effort-overlay-timer').textContent =
-                Protocol.formatTime(Math.floor(effortElapsed));
-
-            // Show current target for MAP ramp steps
-            if (state.phase.isMaxEffort && state.phase.mapStage) {
-                document.getElementById('effort-overlay-target').textContent =
-                    `Step ${state.phase.mapStage}/${state.phase.mapTotal} — ${state.phase.target} W`;
-            } else {
-                document.getElementById('effort-overlay-target').textContent = '';
-            }
+                Protocol.formatTime(Math.floor(state.phaseElapsed));
+            document.getElementById('effort-overlay-target').textContent = '';
         }
 
         // --- No-pedaling detection (bike MAP ramp only) ---
@@ -839,27 +826,20 @@ const App = (() => {
         // Audio cue
         playBeep(state.phase.id === Protocol.PHASE.MAX_EFFORT || state.phase.id === Protocol.PHASE.TTE ? 880 : 660);
 
-        // Show/hide effort overlay for MAP ramp and TTE phases
+        // Show/hide effort overlay for RUN TTE only (bike uses normal UI)
         const effortOverlay = document.getElementById('effort-overlay');
-        if (state.phase.id === Protocol.PHASE.TTE || state.phase.id === Protocol.PHASE.MAX_EFFORT) {
-            // Calculate total MAP/TTE duration for the "of X:XX" display
-            let totalEffortDuration = state.phase.duration;
-            if (state.phase.isMaxEffort) {
-                // Sum all remaining MAP ramp steps from current phase onward
-                totalEffortDuration = 0;
-                for (const p of phases) {
-                    if (p.isMaxEffort) totalEffortDuration += p.duration;
-                }
-            }
+        if (state.phase.id === Protocol.PHASE.TTE) {
             effortOverlay.style.display = 'flex';
-            document.getElementById('effort-overlay-label').textContent =
-                state.phase.isMaxEffort ? 'MAP RAMP' : 'TIME TO EXHAUSTION';
+            document.getElementById('effort-overlay-label').textContent = 'TIME TO EXHAUSTION';
             document.getElementById('effort-overlay-total').textContent =
-                'of ' + Protocol.formatTime(totalEffortDuration);
+                'of ' + Protocol.formatTime(state.phase.duration);
+        } else if (state.phase.id === Protocol.PHASE.MAX_EFFORT) {
+            // Bike MAP ramp: no overlay, just reset no-pedaling counter
             noPedalingSeconds = 0;
         } else {
             effortOverlay.style.display = 'none';
             document.getElementById('no-pedaling-overlay').style.display = 'none';
+            document.getElementById('cooldown-transition-overlay').style.display = 'none';
             noPedalingSeconds = 0;
         }
 
@@ -905,11 +885,33 @@ const App = (() => {
         const adjustment = (newElapsed - elapsedSec) * 1000;
         startTimestamp -= adjustment;
 
-        // Hide overlays
+        // Hide the main effort overlay
         document.getElementById('effort-overlay').style.display = 'none';
         document.getElementById('no-pedaling-overlay').style.display = 'none';
 
-        // Notification beep
+        if (sport === 'run') {
+            // Run: show cooldown transition overlay with treadmill pace
+            const cooldownPhase = phases.find(p => p.id === Protocol.PHASE.COOLDOWN);
+            const paceHint = cooldownPhase
+                ? `set treadmill to ${cooldownPhase.targetDisplay}`
+                : '';
+            document.getElementById('cooldown-pace-hint').textContent = paceHint;
+            document.getElementById('cooldown-transition-overlay').style.display = 'flex';
+
+            // Pause the test while athlete gets back on treadmill
+            if (!isPaused) togglePause();
+        } else {
+            // Bike: proceed directly to cooldown
+            playBeep(440, 0.3);
+        }
+    }
+
+    /**
+     * "START COOLDOWN" button handler — resumes test after run TTE.
+     */
+    function startCooldown() {
+        document.getElementById('cooldown-transition-overlay').style.display = 'none';
+        if (isPaused) togglePause();
         playBeep(440, 0.3);
     }
 

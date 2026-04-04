@@ -293,13 +293,24 @@
             </div>
         </div>
 
-        <!-- No-pedaling detection overlay -->
+        <!-- No-pedaling detection overlay (bike only) -->
         <div id="no-pedaling-overlay" class="effort-overlay" style="display:none;">
             <div class="effort-overlay-content">
                 <div class="effort-overlay-label" style="color:#f59e0b;">NO PEDALING DETECTED</div>
-                <p class="effort-overlay-hint" style="margin:1rem 0;">It looks like you've stopped. Ready to finish?</p>
+                <p class="effort-overlay-hint" style="margin:1rem 0;">It looks like you've stopped.</p>
                 <button class="btn-tte-done" id="btn-no-pedaling-done">I'M DONE</button>
+                <p class="effort-overlay-hint">proceed to cooldown</p>
                 <button class="btn-no-pedaling-resume" id="btn-no-pedaling-resume">KEEP GOING</button>
+            </div>
+        </div>
+
+        <!-- Run cooldown transition overlay (shown after TTE "I'm done") -->
+        <div id="cooldown-transition-overlay" class="effort-overlay" style="display:none;">
+            <div class="effort-overlay-content">
+                <div class="effort-overlay-label" style="color:#22c55e;">WELL DONE</div>
+                <p class="effort-overlay-hint" style="margin:1rem 0;font-size:0.9rem;color:rgba(255,255,255,0.6);">When you're ready, get back on the treadmill and hit start.</p>
+                <button class="btn-tte-done" id="btn-start-cooldown" style="background:linear-gradient(135deg,#059669,#10b981);border-color:rgba(16,185,129,0.5);box-shadow:0 0 30px rgba(16,185,129,0.3);">START COOLDOWN</button>
+                <p class="effort-overlay-hint" id="cooldown-pace-hint">set treadmill to ---</p>
             </div>
         </div>
 

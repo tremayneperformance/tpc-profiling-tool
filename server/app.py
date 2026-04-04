@@ -307,6 +307,13 @@ def create_app():
         data = request.get_json(silent=True) or {}
         if 'name' in data:
             user.name = data['name']
+        if 'email' in data:
+            new_email = str(data['email']).strip().lower()
+            if new_email and new_email != user.email:
+                existing = User.query.filter_by(email=new_email).first()
+                if existing:
+                    return jsonify({'status': 'error', 'message': 'Email already in use.'}), 409
+                user.email = new_email
         if 'approved' in data:
             user.approved = bool(data['approved'])
         if 'weight_kg' in data:
@@ -319,6 +326,9 @@ def create_app():
             user.threshold_power = data['threshold_power']
         if 'threshold_pace' in data:
             user.threshold_pace = data['threshold_pace']
+        if data.get('password_reset'):
+            user.password_hash = hash_password('tpc')
+            user.password_must_change = True
 
         db.session.commit()
         return jsonify({'status': 'ok', 'athlete': user.to_dict()})

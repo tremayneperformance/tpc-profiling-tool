@@ -596,6 +596,28 @@
   </div>
 </div>
 
+<!-- SAVED SESSIONS FROM DATABASE -->
+<div id="sessions-bar" class="all-tests-bar" style="bottom:40px;">
+  <button id="sessions-toggle" class="all-tests-toggle" onclick="toggleSessionsPanel()" style="background:linear-gradient(135deg,#1e3a5f,#1e293b);border-color:rgba(59,130,246,0.3);">
+    Saved Sessions <span id="sessions-arrow">&#9650;</span>
+  </button>
+  <div id="sessions-panel" class="all-tests-panel" hidden>
+    <div style="padding:0.5rem 1rem;font-size:0.8rem;color:#9ca3af;">
+      Tests uploaded from athletes. Click a row to load and analyse.
+    </div>
+    <div class="all-tests-table-wrap">
+      <table class="history-table all-tests-table">
+        <thead><tr>
+          <th>Athlete</th><th>Date</th><th>Sport</th><th>Duration</th>
+          <th>Peak Power</th><th>Peak HR</th><th>RR Count</th><th>Quality</th><th>Action</th>
+        </tr></thead>
+        <tbody id="sessions-tbody"></tbody>
+      </table>
+      <div id="sessions-empty" class="history-empty" hidden>No sessions found.</div>
+    </div>
+  </div>
+</div>
+
 <!-- ALL TESTS BOTTOM TAB -->
 <div id="all-tests-bar" class="all-tests-bar">
   <button id="all-tests-toggle" class="all-tests-toggle" onclick="toggleAllTestsPanel()">
@@ -2898,6 +2920,74 @@ function renderTrendChart(tests) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// SAVED SESSIONS PANEL (database)
+function toggleSessionsPanel() {
+  const panel = document.getElementById('sessions-panel');
+  const arrow = document.getElementById('sessions-arrow');
+  if (panel.hidden) { panel.hidden = false; arrow.innerHTML = '&#9660;'; loadSessions(); }
+  else { panel.hidden = true; arrow.innerHTML = '&#9650;'; }
+}
+
+async function loadSessions() {
+  try {
+    const resp = await authFetch('/api/analysis/sessions');
+    const data = await resp.json();
+    if (data.status !== 'ok') return;
+    const sessions = data.sessions || [];
+    const tbody = document.getElementById('sessions-tbody');
+    const empty = document.getElementById('sessions-empty');
+    if (!sessions.length) { tbody.innerHTML = ''; empty.hidden = false; return; }
+    empty.hidden = true;
+    tbody.innerHTML = sessions.map(s => {
+      const date = s.test_date ? s.test_date.split('T')[0] : '\u2014';
+      const dur = s.duration_sec ? Math.floor(s.duration_sec / 60) + 'min' : '\u2014';
+      const peak_p = s.peak_power ? s.peak_power + 'W' : '\u2014';
+      const peak_hr = s.peak_hr ? s.peak_hr + 'bpm' : '\u2014';
+      const rr = s.rr_count || '\u2014';
+      const q = s.quality || '\u2014';
+      return `<tr>
+        <td>${esc(s.athlete_name || '\u2014')}</td><td>${date}</td><td>${s.sport || 'bike'}</td>
+        <td>${dur}</td><td>${peak_p}</td><td>${peak_hr}</td><td>${rr}</td><td>${q}</td>
+        <td><button class="history-btn-reanalyze" onclick="analyzeSession(${s.id},'${esc(s.athlete_name||'')}','${s.sport||'bike'}')">Analyse</button></td>
+      </tr>`;
+    }).join('');
+  } catch (e) { console.error('Failed to load sessions:', e); }
+}
+
+async function analyzeSession(sessionId, athleteName, sport) {
+  // Pre-fill athlete name
+  document.getElementById('ramp-athlete-name').value = athleteName;
+
+  const statusEl = document.getElementById(sport === 'run' ? 'run-ramp-status' : 'bike-ramp-status');
+  if (statusEl) { statusEl.textContent = 'Analysing session...'; statusEl.hidden = false; }
+
+  try {
+    const resp = await authFetch('/api/analysis/analyze-session/' + sessionId, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sport: sport }),
+    });
+    const data = await resp.json();
+    if (data.status === 'ok' && data.result) {
+      if (sport === 'run') {
+        runResult = data.result;
+      } else {
+        bikeResult = data.result;
+      }
+      renderAllResults(data.result, sport);
+      updateSaveButton();
+      const section = document.getElementById(sport + '-results-section');
+      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (statusEl) statusEl.hidden = true;
+    } else {
+      const msg = data.result?.message || data.message || 'Analysis returned no results';
+      if (statusEl) statusEl.textContent = msg;
+    }
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Analysis failed: ' + e.message;
+  }
+}
+
 // ALL TESTS BOTTOM PANEL
 // ═══════════════════════════════════════════════════════════════════
 let _allTests = [];

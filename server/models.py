@@ -32,6 +32,7 @@ class User(db.Model):
     last_login = db.Column(db.DateTime, nullable=True)
 
     # Athlete profile fields
+    sport = db.Column(db.String(10), nullable=True)  # 'bike', 'run', or 'both'
     weight_kg = db.Column(db.Float, nullable=True)
     hrmax_bike = db.Column(db.Integer, nullable=True)
     hrmax_run = db.Column(db.Integer, nullable=True)
@@ -49,6 +50,7 @@ class User(db.Model):
             'approved': self.approved,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None,
+            'sport': self.sport,
             'weight_kg': self.weight_kg,
             'hrmax_bike': self.hrmax_bike,
             'hrmax_run': self.hrmax_run,

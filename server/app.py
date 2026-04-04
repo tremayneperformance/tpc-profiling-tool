@@ -1008,8 +1008,8 @@ def create_app():
         return jsonify(result)
 
     # -----------------------------------------------------------------------
-    # LEGACY ROUTE ALIASES — so existing analysis dashboard HTML works
-    # without rewriting all fetch() calls. All require coach auth.
+    # PRIMARY ROUTES — used by analysis dashboard templates.
+    # All require coach auth.
     # -----------------------------------------------------------------------
 
     @app.route('/athlete_list', methods=['GET'])

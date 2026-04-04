@@ -769,13 +769,11 @@ const App = (() => {
 
             if (stageDFA !== null) {
                 lastCompletedStageDFA = stageDFA;
-                console.log(`Stage ${prevPhase.stageNum} DFA: ${stageDFA.toFixed(3)}`);
 
                 if (hrvt2StageCompleted && state.phase.id === Protocol.PHASE.RAMP) {
                     // hrvt2 was flagged on a PREVIOUS stage, and the athlete
                     // has now completed one full additional stage — trigger early end.
                     const completedStage = prevPhase.stageNum;
-                    console.log(`Early ramp termination after stage ${completedStage}`);
 
                     Data.setEarlyRampEnd({
                         stage: completedStage,
@@ -788,7 +786,6 @@ const App = (() => {
                     const recoveryIdx = phases.findIndex(p => p.id === Protocol.PHASE.RECOVERY);
                     if (recoveryIdx > state.index) {
                         const removed = phases.splice(state.index, recoveryIdx - state.index);
-                        console.log(`Removed ${removed.length} remaining ramp stages`);
 
                         // Rebuild progress segments to reflect shorter test
                         buildProgressSegments();
@@ -807,7 +804,7 @@ const App = (() => {
                 // must complete one more full stage first.
                 if (stageDFA < HRVT2_THRESHOLD && !hrvt2StageCompleted) {
                     hrvt2StageCompleted = true;
-                    console.log(`HRVT2 reached at stage ${prevPhase.stageNum} (DFA=${stageDFA.toFixed(3)}) — one more full stage required`);
+
                 }
             }
         }
@@ -880,7 +877,6 @@ const App = (() => {
         const phaseStartElapsed = phasesBeforeCurrent.reduce((sum, p) => sum + p.duration, 0);
         const actualDuration = elapsedSec - phaseStartElapsed;
 
-        console.log(`TTE/Max effort ended by athlete after ${actualDuration.toFixed(1)}s`);
 
         // Shorten current phase to end now
         phases[state.index].duration = actualDuration;
@@ -933,7 +929,6 @@ const App = (() => {
      */
     function mapRampFailure(state) {
         if (!isRunning) return;
-        console.log(`MAP ramp: power drop detected at stage ${state.phase.label}`);
         // Show the no-pedaling overlay — athlete decides to stop or continue
         document.getElementById('no-pedaling-overlay').style.display = 'flex';
     }

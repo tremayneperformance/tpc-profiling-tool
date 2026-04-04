@@ -9,7 +9,7 @@ Tables:
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -28,7 +28,7 @@ class User(db.Model):
     # Coach-only: password hash for persistent login
     password_hash = db.Column(db.String(128), nullable=True)
     password_must_change = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_login = db.Column(db.DateTime, nullable=True)
 
     # Athlete profile fields

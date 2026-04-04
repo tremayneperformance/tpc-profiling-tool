@@ -2640,6 +2640,8 @@ document.getElementById('ramp-save-btn').addEventListener('click', async () => {
   let savedCount = 0;
   let lastError = null;
 
+  let hrmaxUpdates = [];
+
   async function saveOne(data) {
     const payload = { athlete_name: name, result: data };
     if (weightKg) payload.weight_kg = weightKg;
@@ -2651,7 +2653,10 @@ document.getElementById('ramp-save-btn').addEventListener('click', async () => {
     if (paceStr) payload.threshold_pace = paceStr;
     const resp = await authFetch('/save_ramp_test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const result = await resp.json();
-    if (result.status === 'ok') savedCount++;
+    if (result.status === 'ok') {
+      savedCount++;
+      if (result.hrmax_updated) hrmaxUpdates.push(result.hrmax_updated);
+    }
     else lastError = result.message || 'Save failed.';
   }
 
@@ -2659,12 +2664,21 @@ document.getElementById('ramp-save-btn').addEventListener('click', async () => {
     if (bikeResult) await saveOne(bikeResult);
     if (runResult) await saveOne(runResult);
     if (savedCount > 0) {
-      confirmEl.textContent = savedCount === 2 ? 'Both saved!' : 'Saved!';
+      let confirmMsg = savedCount === 2 ? 'Both saved!' : 'Saved!';
+      // Auto-update HRmax input fields if observed peak was within 3%
+      for (const upd of hrmaxUpdates) {
+        const inputId = upd.field === 'hrmax_bike' ? 'ramp-hrmax-bike' : 'ramp-hrmax-run';
+        const el = document.getElementById(inputId);
+        if (el) el.value = upd.new_hrmax;
+        const sport = upd.field === 'hrmax_bike' ? 'Bike' : 'Run';
+        confirmMsg += ` ${sport} HRmax updated: ${upd.old_hrmax} → ${upd.new_hrmax} bpm (peak ${upd.observed_peak_hr}).`;
+      }
+      confirmEl.textContent = confirmMsg;
       confirmEl.hidden = false;
       loadHistory(name);
       loadAllTests();
       authFetch('/athlete_list').then(r => r.json()).then(d => { if (d.status === 'ok') athleteList = d.athletes || []; }).catch(() => {});
-      setTimeout(() => confirmEl.hidden = true, 3000);
+      setTimeout(() => confirmEl.hidden = true, hrmaxUpdates.length ? 8000 : 3000);
     }
     if (lastError) showRampStatus('bike', lastError, 'error');
   } catch (err) {
@@ -2692,17 +2706,41 @@ async function loadHistory(athleteName) {
     window._historyTests = tests;
     window._historyAthlete = athleteName;
 
+    // Detect bike+run pairs within 10 days for combined badge
+    const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
+    const pairedIndices = new Set();
+    for (let i = 0; i < tests.length; i++) {
+      const ti = tests[i];
+      const tiSport = ti.protocol_type || 'bike';
+      const tiDate = new Date(ti.test_date);
+      if (isNaN(tiDate.getTime())) continue;
+      for (let j = i + 1; j < tests.length; j++) {
+        const tj = tests[j];
+        const tjSport = tj.protocol_type || 'bike';
+        if (tiSport === tjSport) continue;
+        const tjDate = new Date(tj.test_date);
+        if (isNaN(tjDate.getTime())) continue;
+        if (Math.abs(tiDate - tjDate) <= TEN_DAYS_MS) {
+          pairedIndices.add(i);
+          pairedIndices.add(j);
+        }
+      }
+    }
+
     tbody.innerHTML = tests.map((t, i) => {
       const sport = t.protocol_type || 'bike';
       const sportLabel = sport === 'run' ? 'Run' : 'Bike';
       const primaryValue = sport === 'run' ? (t.hrvt2_pace || t.hrvt2_power || '\u2014') : (t.hrvt2_power ? t.hrvt2_power + 'W' : '\u2014');
       const hrvt1cValue = sport === 'run' ? (t.hrvt1c_pace || t.hrvt1c_power || '\u2014') : (t.hrvt1c_power ? t.hrvt1c_power + 'W' : '\u2014');
       const hasFit = !!t.has_fit_file;
+      const hasFullResult = !!t.result_id;
       const reBtn = hasFit
         ? `<button class="history-btn-reanalyze" onclick="event.stopPropagation();reanalyzeTest('${athleteName}',${i})" title="Re-run full analysis from stored FIT file">Re-analyse</button>`
         : '';
+      const pairedBadge = pairedIndices.has(i) ? '<span style="background:#8b5cf6;color:#fff;font-size:0.65rem;padding:1px 5px;border-radius:3px;margin-left:4px;" title="Bike+Run pair within 10 days — will auto-combine">Combined</span>' : '';
+      const fullBadge = hasFullResult ? '<span style="background:#22c55e;color:#fff;font-size:0.65rem;padding:1px 5px;border-radius:3px;margin-left:4px;" title="Full analysis available">Full</span>' : '';
       return `<tr class="history-row-clickable" onclick="viewHistoryTest(${i})" title="Click to view results">
-        <td>${t.test_date ? t.test_date.split('T')[0] : '\u2014'}</td><td>${sportLabel}</td><td>${primaryValue}</td><td>${hrvt1cValue}</td>
+        <td>${t.test_date ? t.test_date.split('T')[0] : '\u2014'}</td><td>${sportLabel}${pairedBadge}${fullBadge}</td><td>${primaryValue}</td><td>${hrvt1cValue}</td>
         <td>${t.archetype || '\u2014'}</td><td>${t.regression_r2_power ? t.regression_r2_power.toFixed(3) : '\u2014'}</td><td>${t.data_quality || '\u2014'}</td>
         <td>${reBtn}<button class="history-btn-delete" onclick="event.stopPropagation();deleteRampTest('${athleteName}',${i})">Delete</button></td></tr>`;
     }).join('');
@@ -2746,11 +2784,41 @@ async function reanalyzeTest(athleteName, index) {
   }
 }
 
-function viewHistoryTest(index) {
+async function viewHistoryTest(index) {
   const tests = window._historyTests;
   if (!tests || !tests[index]) return;
   const t = tests[index];
   const sport = t.protocol_type || 'bike';
+
+  // If full result is available, fetch and render the complete analysis
+  if (t.result_id) {
+    try {
+      const resp = await authFetch(`/ramp_test_full_result?result_id=${encodeURIComponent(t.result_id)}`);
+      const data = await resp.json();
+      if (data.status === 'ok' && data.result) {
+        const fullResult = data.result;
+        if (sport === 'run') {
+          runResult = fullResult;
+        } else {
+          bikeResult = fullResult;
+        }
+        renderAllResults(fullResult, sport);
+        // Override title with saved date
+        const dateStr = t.test_date ? t.test_date.split('T')[0] : '';
+        const title = document.getElementById(sport + '-results-title');
+        title.textContent = (sport === 'run' ? 'Run' : 'Bike') + ' Ramp Test \u2014 ' + dateStr;
+        updateSaveButton();
+
+        // Auto-load companion test if within 10 days
+        await autoLoadCompanion(index);
+
+        document.getElementById(sport + '-results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+    } catch (err) { /* Fall through to summary view */ }
+  }
+
+  // Fallback: summary-only view for legacy tests without full result
   const pfx = sport + '-';
   const isRun = sport === 'run';
   const hrmax = getHRmax(sport);
@@ -2793,7 +2861,95 @@ function viewHistoryTest(index) {
   const chartsDetails = document.getElementById(sport + '-results-section').querySelectorAll('details.charts-details');
   chartsDetails.forEach(d => d.hidden = true);
   document.getElementById(pfx + 'warnings-bar').hidden = true;
+
+  // Auto-load companion test if within 10 days (summary mode)
+  await autoLoadCompanion(index);
+
   document.getElementById(sport + '-results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
+ * Auto-combine: find the complementary sport test within 10 days and load it.
+ * E.g., if viewing a bike test, find the nearest run test within 10 days (and vice versa).
+ */
+async function autoLoadCompanion(currentIndex) {
+  const tests = window._historyTests;
+  if (!tests || tests.length < 2) return;
+
+  const current = tests[currentIndex];
+  const currentSport = current.protocol_type || 'bike';
+  const companionSport = currentSport === 'bike' ? 'run' : 'bike';
+  const currentDate = new Date(current.test_date);
+  if (isNaN(currentDate.getTime())) return;
+
+  // Find the most recent companion-sport test within 10 days
+  const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
+  let bestIdx = -1;
+  let bestDiff = Infinity;
+
+  for (let i = 0; i < tests.length; i++) {
+    if (i === currentIndex) continue;
+    const t = tests[i];
+    if ((t.protocol_type || 'bike') !== companionSport) continue;
+    const tDate = new Date(t.test_date);
+    if (isNaN(tDate.getTime())) continue;
+    const diff = Math.abs(currentDate - tDate);
+    if (diff <= TEN_DAYS_MS && diff < bestDiff) {
+      bestDiff = diff;
+      bestIdx = i;
+    }
+  }
+
+  if (bestIdx === -1) return;
+
+  const companion = tests[bestIdx];
+
+  // Don't reload if we already have the companion sport result loaded
+  if (companionSport === 'bike' && bikeResult) return;
+  if (companionSport === 'run' && runResult) return;
+
+  // Load the companion test (full result if available, else summary)
+  if (companion.result_id) {
+    try {
+      const resp = await authFetch(`/ramp_test_full_result?result_id=${encodeURIComponent(companion.result_id)}`);
+      const data = await resp.json();
+      if (data.status === 'ok' && data.result) {
+        if (companionSport === 'run') {
+          runResult = data.result;
+        } else {
+          bikeResult = data.result;
+        }
+        renderAllResults(data.result, companionSport);
+        const dateStr = companion.test_date ? companion.test_date.split('T')[0] : '';
+        const title = document.getElementById(companionSport + '-results-title');
+        title.textContent = (companionSport === 'run' ? 'Run' : 'Bike') + ' Ramp Test \u2014 ' + dateStr + ' (auto-combined)';
+        updateCombinedReport();
+        return;
+      }
+    } catch (err) { /* fall through */ }
+  }
+
+  // Fallback: load companion in summary mode
+  const pfx = companionSport + '-';
+  const isRun = companionSport === 'run';
+  const hrmax = getHRmax(companionSport);
+  const weightKg = getWeightKg();
+  const ct = companion;
+
+  document.getElementById(companionSport + '-results-section').hidden = false;
+  const ctTitle = document.getElementById(pfx + 'results-title');
+  const ctDate = ct.test_date ? ct.test_date.split('T')[0] : '';
+  ctTitle.textContent = (isRun ? 'Run' : 'Bike') + ' Ramp Test \u2014 ' + ctDate + ' (auto-combined)';
+
+  const thr = { hrvt1s_power: ct.hrvt1s_power, hrvt1s_hr: ct.hrvt1s_hr, hrvt1c_power: ct.hrvt1c_power, hrvt1c_hr: ct.hrvt1c_hr, hrvt2_power: ct.hrvt2_power, hrvt2_hr: ct.hrvt2_hr, hrvt2_extrapolated: ct.hrvt2_extrapolated, a1_star: ct.a1_star };
+  const paceData = isRun ? { hrvt1s_pace: ct.hrvt1s_pace, hrvt1c_pace: ct.hrvt1c_pace, hrvt2_pace: ct.hrvt2_pace } : null;
+  renderThresholds(thr, { r2: ct.regression_r2_power }, {}, hrmax, weightKg, paceData, pfx);
+
+  if (ct.archetype) {
+    renderAdvancedArchetype({ archetype: ct.archetype, afu: ct.afu, anfu: ct.anfu, tsr: ct.tsr, atpr: ct.atpr }, pfx);
+  }
+
+  updateCombinedReport();
 }
 
 function renderTrendChart(tests) {

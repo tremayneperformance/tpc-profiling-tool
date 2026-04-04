@@ -84,6 +84,37 @@ def create_app():
         """Retrieve and remove FIT file from cache."""
         return fit_cache.pop(key, None)
 
+    def check_and_update_hrmax(user, sport, observed_peak_hr):
+        """
+        Auto-update HRmax if observed peak HR is within 3% of stored value
+        (or exceeds it). New HRmax = observed peak + 3%.
+
+        Returns dict with update info, or None if no update needed.
+        """
+        if not observed_peak_hr or observed_peak_hr <= 0:
+            return None
+
+        field = 'hrmax_bike' if sport == 'bike' else 'hrmax_run'
+        stored_hrmax = getattr(user, field, None)
+
+        if stored_hrmax is None or stored_hrmax <= 0:
+            return None
+
+        # Check if observed peak is within 3% of stored HRmax (or exceeds it)
+        threshold = stored_hrmax * 0.97  # 3% below stored
+        if observed_peak_hr >= threshold:
+            new_hrmax = int(round(observed_peak_hr * 1.03))
+            old_hrmax = stored_hrmax
+            setattr(user, field, new_hrmax)
+            return {
+                'field': field,
+                'old_hrmax': old_hrmax,
+                'new_hrmax': new_hrmax,
+                'observed_peak_hr': int(round(observed_peak_hr)),
+            }
+
+        return None
+
     with app.app_context():
         db.create_all()
         # Add columns that create_all() won't add to existing tables
@@ -276,6 +307,13 @@ def create_app():
         data = request.get_json(silent=True) or {}
         if 'name' in data:
             user.name = data['name']
+        if 'email' in data:
+            new_email = str(data['email']).strip().lower()
+            if new_email and new_email != user.email:
+                existing = User.query.filter_by(email=new_email).first()
+                if existing:
+                    return jsonify({'status': 'error', 'message': 'Email already in use.'}), 409
+                user.email = new_email
         if 'approved' in data:
             user.approved = bool(data['approved'])
         if 'weight_kg' in data:
@@ -288,6 +326,9 @@ def create_app():
             user.threshold_power = data['threshold_power']
         if 'threshold_pace' in data:
             user.threshold_pace = data['threshold_pace']
+        if data.get('password_reset'):
+            user.password_hash = hash_password('tpc')
+            user.password_must_change = True
 
         db.session.commit()
         return jsonify({'status': 'ok', 'athlete': user.to_dict()})
@@ -403,13 +444,26 @@ def create_app():
             else:
                 user.threshold_pace = str(meta['thresholdValue'])
 
+        # Auto-update HRmax if observed peak is within 3% of stored value
+        sport = meta.get('sport', 'bike')
+        peak_hr = summary.get('peakHR')
+        hrmax_update = check_and_update_hrmax(user, sport, peak_hr)
+
         db.session.commit()
 
-        return jsonify({
+        resp = {
             'status': 'ok',
             'message': 'Test data saved successfully.',
             'session_id': session.id,
-        })
+        }
+        if hrmax_update:
+            resp['hrmax_updated'] = hrmax_update
+            resp['message'] += (
+                f' HRmax ({sport}) auto-updated from '
+                f'{hrmax_update["old_hrmax"]} to {hrmax_update["new_hrmax"]} bpm '
+                f'(observed peak: {hrmax_update["observed_peak_hr"]} bpm).'
+            )
+        return jsonify(resp)
 
     @app.route('/api/test/sessions', methods=['GET'])
     @login_required
@@ -1134,6 +1188,47 @@ def create_app():
             if data.get(k) is not None:
                 result[k] = data[k]
 
+        # Auto-update HRmax if observed peak is within 3% of stored value
+        hrmax_update = None
+        sport = result.get('protocol_type', 'bike')
+        hrmax_field = 'hrmax_bike' if sport == 'bike' else 'hrmax_run'
+        stored_hrmax = result.get(hrmax_field)
+
+        # Find observed peak HR from analysis result
+        observed_peak_hr = None
+        effort_max_hr = result.get('effort_validation', {}).get('max_hr')
+        if effort_max_hr:
+            observed_peak_hr = effort_max_hr
+        # Also check max HR across all DFA windows
+        windows = result.get('windows', [])
+        if windows:
+            window_max_hr = max(
+                (w.get('hr', 0) for w in windows if w.get('hr')), default=0
+            )
+            if window_max_hr and (observed_peak_hr is None or window_max_hr > observed_peak_hr):
+                observed_peak_hr = window_max_hr
+
+        if stored_hrmax and observed_peak_hr and stored_hrmax > 0:
+            threshold = stored_hrmax * 0.97
+            if observed_peak_hr >= threshold:
+                new_hrmax = int(round(observed_peak_hr * 1.03))
+                hrmax_update = {
+                    'field': hrmax_field,
+                    'old_hrmax': stored_hrmax,
+                    'new_hrmax': new_hrmax,
+                    'observed_peak_hr': int(round(observed_peak_hr)),
+                }
+                result[hrmax_field] = new_hrmax
+
+        # Also update the DB User record if athlete exists
+        user = User.query.filter_by(name=athlete_name, role='athlete').first()
+        if user and observed_peak_hr:
+            db_update = check_and_update_hrmax(user, sport, observed_peak_hr)
+            if db_update:
+                db.session.commit()
+                if not hrmax_update:
+                    hrmax_update = db_update
+
         # Persist the FIT file from cache if available
         fit_key = data.get('fit_cache_key') or result.get('fit_cache_key')
         fit_entry = pop_fit_file(fit_key) if fit_key else None
@@ -1143,7 +1238,15 @@ def create_app():
 
         ok = ramp_analysis.save_ramp_test_result(athlete_name, result)
         if ok:
-            return jsonify({'status': 'ok', 'message': f'Ramp test saved for {athlete_name}.'})
+            resp = {'status': 'ok', 'message': f'Ramp test saved for {athlete_name}.'}
+            if hrmax_update:
+                resp['hrmax_updated'] = hrmax_update
+                resp['message'] += (
+                    f' HRmax ({sport}) auto-updated from '
+                    f'{hrmax_update["old_hrmax"]} to {hrmax_update["new_hrmax"]} bpm '
+                    f'(observed peak: {hrmax_update["observed_peak_hr"]} bpm).'
+                )
+            return jsonify(resp)
         return jsonify({'status': 'error', 'message': 'Could not write history file.'}), 500
 
     @app.route('/save_ftp_test', methods=['POST'])
@@ -1172,6 +1275,18 @@ def create_app():
             t.pop('fit_file_name', None)
             t['has_fit_file'] = has_fit
         return jsonify({'status': 'ok', 'athlete': athlete, 'tests': tests})
+
+    @app.route('/ramp_test_full_result', methods=['GET'])
+    @coach_required
+    def legacy_ramp_full_result():
+        """Retrieve full analysis result for a specific saved test."""
+        result_id = request.args.get('result_id', '').strip()
+        if not result_id:
+            return jsonify({'status': 'error', 'message': 'result_id required.'}), 400
+        data = ramp_analysis.load_full_result(result_id)
+        if data is None:
+            return jsonify({'status': 'error', 'message': 'Full result not found.'}), 404
+        return jsonify({'status': 'ok', 'result': data})
 
     @app.route('/ftp_test_history', methods=['GET'])
     @coach_required

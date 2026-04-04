@@ -16,8 +16,9 @@ const Protocol = (() => {
             intensities: [0.60, 0.66, 0.71, 0.77, 0.82, 0.88, 0.93, 0.99, 1.04, 1.10],
         },
         recovery: { duration: 8 * 60, powerPct: 0.45 },      // 8 min @ 45% FTP
-        mapRamp: {                                             // MAP ramp to failure
-            stageDuration: 60,                                 // 1 min per step
+        mapRamp: {                                              // MAP ramp: 6 × 1 min steps
+            stages: 6,
+            stageDuration: 60,                                  // 1 min per step
             intensities: [1.10, 1.15, 1.20, 1.25, 1.30, 1.35],
         },
         cooldown: { duration: 10 * 60, powerPct: 0.45 },     // 10 min @ 45% FTP
@@ -109,7 +110,8 @@ const Protocol = (() => {
         // MAP Ramp (bike) or TTE (run)
         if (sport === 'bike') {
             const mapRamp = proto.mapRamp;
-            for (let i = 0; i < mapRamp.intensities.length; i++) {
+            const mapStages = mapRamp.intensities.length;
+            for (let i = 0; i < mapStages; i++) {
                 const pct = mapRamp.intensities[i];
                 const target = Math.round(thresholdValue * pct);
                 phases.push({
@@ -121,6 +123,8 @@ const Protocol = (() => {
                     targetDisplay: `${target} W`,
                     isMaxEffort: true,
                     isMapRamp: true,
+                    mapStage: i + 1,
+                    mapTotal: mapStages,
                     pct: pct,
                 });
             }
